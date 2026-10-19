@@ -104,7 +104,7 @@ export function SettingsScreen({ settings, onSaved }: { settings: Settings; onSa
             </GroupedRow>
             <GroupedRow label="Item IDs" detail="Um por linha">
               <textarea
-                className="no-drag h-16 w-64 resize-none rounded-control bg-control-bg px-2 py-1 text-base shadow-[var(--shadow-control)] outline-none placeholder:text-label-tertiary"
+                className="no-drag h-16 w-64 resize-none rounded-control bg-control-bg px-2 py-1 text-base shadow-field outline-none placeholder:text-label-tertiary"
                 value={itemIds}
                 onChange={(e) => setItemIds(e.target.value)}
                 placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"

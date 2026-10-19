@@ -11,10 +11,6 @@ import { SettingsScreen } from './screens/Settings'
 import { SyncSheet, type SyncState } from './screens/SyncSheet'
 import { Transactions } from './screens/Transactions'
 
-function applyAccent(accent: string) {
-  document.documentElement.style.setProperty('--accent', accent)
-}
-
 export function App() {
   const [selection, setSelection] = useState<Selection>({ screen: 'dashboard' })
   /** Incrementa quando os dados mudam (sync, recategorização), para as telas recarregarem. */
@@ -29,13 +25,11 @@ export function App() {
   const reviewGroups = useAsync(() => window.api.listReviewGroups(), [dataVersion])
   const bumpData = useCallback(() => setDataVersion((v) => v + 1), [])
 
-  // Aparência: plataforma (para o material da janela) e cor de destaque do sistema.
+  // Plataforma: decide o material da janela (vidro, Mica ou sólido) no CSS.
   useEffect(() => {
-    void window.api.getAppearance().then(({ accent, platform }) => {
+    void window.api.getAppearance().then(({ platform }) => {
       document.documentElement.dataset['platform'] = platform
-      applyAccent(accent)
     })
-    return window.api.onAccentChange(applyAccent)
   }, [])
 
   const startSync = useCallback(async () => {

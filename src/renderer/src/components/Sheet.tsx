@@ -39,7 +39,7 @@ export function Sheet({
             aria-modal="true"
             aria-label={title}
             style={{ width, transformOrigin: 'top center' }}
-            className="h-fit overflow-hidden rounded-b-panel bg-window-bg shadow-[var(--shadow-panel)]"
+            className="h-fit overflow-hidden rounded-b-panel bg-window-bg shadow-panel"
             initial={{ y: -24, opacity: 0, scaleY: 0.96 }}
             animate={{ y: 0, opacity: 1, scaleY: 1 }}
             exit={{ y: -16, opacity: 0, scaleY: 0.98 }}

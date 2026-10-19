@@ -6,7 +6,7 @@ export function GroupedSection({ title, footer, children }: { title?: string; fo
   return (
     <section className="mb-6">
       {title && <h3 className="mb-1.5 px-2.5 text-sm font-semibold text-label-secondary">{title}</h3>}
-      <div className="divide-y divide-[var(--separator)] overflow-hidden rounded-panel bg-control-bg shadow-[var(--shadow-control)]">
+      <div className="divide-y divide-[var(--separator)] overflow-hidden rounded-panel bg-control-bg shadow-control">
         {children}
       </div>
       {footer && <p className="mt-1.5 px-2.5 text-sm text-label-secondary">{footer}</p>}

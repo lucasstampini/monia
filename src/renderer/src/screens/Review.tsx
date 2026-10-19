@@ -90,7 +90,7 @@ export function Review({
                 Ordenado pelo valor total. Ao escolher, todas as transações com essa descrição recebem a categoria e o
                 app cria uma regra para as próximas. Pix para pessoas cai aqui de propósito: só você sabe o que foi.
               </p>
-              <ul className="divide-y divide-[var(--separator)] overflow-hidden rounded-panel bg-control-bg shadow-[var(--shadow-control)]">
+              <ul className="divide-y divide-[var(--separator)] overflow-hidden rounded-panel bg-control-bg shadow-control">
                 <AnimatePresence initial={false}>
                   {visible.map((group) => (
                     <motion.li
@@ -140,7 +140,7 @@ export function Review({
         {notice && (
           <motion.div
             role="status"
-            className="absolute bottom-4 left-1/2 z-20 flex max-w-[80%] -translate-x-1/2 items-center gap-2 rounded-panel bg-window-bg px-3 py-2 shadow-[var(--shadow-panel)]"
+            className="absolute bottom-4 left-1/2 z-20 flex max-w-[80%] -translate-x-1/2 items-center gap-2 rounded-panel bg-window-bg px-3 py-2 shadow-panel"
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 8 }}

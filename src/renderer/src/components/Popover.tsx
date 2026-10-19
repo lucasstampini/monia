@@ -33,7 +33,7 @@ export function Popover({
       <AnimatePresence>
         {open && (
           <motion.div
-            className={`absolute top-full z-30 mt-2 min-w-[240px] rounded-panel bg-window-bg p-3 shadow-[var(--shadow-panel)] ${align === 'end' ? 'right-0' : 'left-0'}`}
+            className={`absolute top-full z-30 mt-2 min-w-[240px] rounded-panel bg-window-bg p-3 shadow-panel ${align === 'end' ? 'right-0' : 'left-0'}`}
             style={{ transformOrigin: align === 'end' ? 'top right' : 'top left' }}
             initial={{ opacity: 0, scale: 0.96, y: -4 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}

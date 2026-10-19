@@ -37,7 +37,7 @@ export function SegmentedControl<T extends string | number>({
               <motion.span
                 layoutId={layoutId}
                 transition={spring}
-                className="absolute inset-0 rounded-[5px] bg-control-bg shadow-[var(--shadow-control)]"
+                className="absolute inset-0 rounded-[5px] bg-control-bg shadow-control"
               />
             )}
             <span className="relative">{option.label}</span>

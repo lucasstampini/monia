@@ -15,8 +15,7 @@ function subscribe<T>(channel: string, callback: (payload: T) => void): () => vo
 
 const eventApi: EventApi = {
   onMenuCommand: (callback) => subscribe(eventChannels.onMenuCommand, callback),
-  onSyncProgress: (callback) => subscribe(eventChannels.onSyncProgress, callback),
-  onAccentChange: (callback) => subscribe(eventChannels.onAccentChange, callback)
+  onSyncProgress: (callback) => subscribe(eventChannels.onSyncProgress, callback)
 }
 
 const api: Api = { ...invokeApi, ...eventApi }

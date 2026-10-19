@@ -85,13 +85,11 @@ export const invokeChannels = [
 export interface EventApi {
   onMenuCommand(callback: (command: MenuCommand) => void): () => void
   onSyncProgress(callback: (progress: SyncProgress) => void): () => void
-  onAccentChange(callback: (accent: string) => void): () => void
 }
 
 export const eventChannels = {
   onMenuCommand: 'menu-command',
-  onSyncProgress: 'sync-progress',
-  onAccentChange: 'accent-change'
+  onSyncProgress: 'sync-progress'
 } as const satisfies Record<keyof EventApi, string>
 
 export type Api = InvokeApi & EventApi

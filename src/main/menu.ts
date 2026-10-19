@@ -14,7 +14,7 @@ export function buildMenu(getWindow: () => BrowserWindow | null): void {
           {
             label: app.name,
             submenu: [
-              { role: 'about', label: 'Sobre Análise de Gastos' },
+              { role: 'about', label: 'Sobre a monia' },
               { type: 'separator' },
               { label: 'Ajustes…', accelerator: 'Cmd+,', click: send('settings') },
               { type: 'separator' },

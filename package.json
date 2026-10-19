@@ -18,11 +18,20 @@
   },
   "build": {
     "appId": "dev.lucas.analise-de-gastos",
-    "productName": "Análise de Gastos",
-    "files": ["out/**", "drizzle/**"],
-    "mac": { "category": "public.app-category.finance" }
+    "productName": "monia",
+    "icon": "resources/icon.png",
+    "files": [
+      "out/**",
+      "drizzle/**",
+      "resources/**"
+    ],
+    "mac": {
+      "category": "public.app-category.finance"
+    }
   },
   "dependencies": {
+    "@fontsource-variable/geist": "^5.3.0",
+    "@fontsource-variable/geist-mono": "^5.3.0",
     "better-sqlite3": "12.11.1",
     "drizzle-orm": "^0.45.4",
     "framer-motion": "^14.4.0",

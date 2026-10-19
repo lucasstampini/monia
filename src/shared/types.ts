@@ -266,7 +266,6 @@ export interface SyncProgress {
 }
 
 export interface Appearance {
-  accent: string
   platform: string
 }
 

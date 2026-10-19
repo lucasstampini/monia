@@ -1,6 +1,10 @@
 import { useEffect, useState } from 'react'
 
 const TOKENS = {
+  primary: '--chart-primary',
+  primaryMuted: '--chart-primary-muted',
+  gain: '--chart-gain',
+  loss: '--chart-loss',
   series1: '--chart-series-1',
   series2: '--chart-series-2',
   series3: '--chart-series-3',

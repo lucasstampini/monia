@@ -13,9 +13,10 @@ body {
   /* Transparente para o vidro da janela (vibrancy/mica) aparecer na sidebar. */
   background: transparent;
   color: var(--label);
-  font-family: -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  font-family: var(--font-sans);
   font-size: 13px;
   line-height: 16px;
+  letter-spacing: -0.005em;
   -webkit-font-smoothing: antialiased;
   user-select: none;
   cursor: default;
@@ -47,15 +48,44 @@ textarea {
   -webkit-app-region: no-drag;
 }
 
+/* Valores em Geist Mono (identidade monia): alinham em coluna e leem como "dado". */
 .tabular {
+  font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
 }
 
-/* Anel de foco no estilo macOS, com a cor de destaque. */
+/* Rótulos técnicos curtos ("01 / local-first", seções da barra lateral). */
+.mono {
+  font-family: var(--font-mono);
+  letter-spacing: 0;
+}
+
+/* Cursor do logotipo: "a IA calculando". Para quem pede menos movimento, fica parado. */
+@keyframes monia-blink {
+  0%,
+  49% {
+    opacity: 1;
+  }
+  50%,
+  100% {
+    opacity: 0;
+  }
+}
+.monia-cursor {
+  animation: monia-blink 1.1s infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .monia-cursor {
+    animation: none;
+  }
+}
+
+/* Anel de foco com a cor de destaque. */
 :focus-visible {
-  outline: 3px solid color-mix(in srgb, var(--accent) 50%, transparent);
+  outline: 3px solid color-mix(in srgb, var(--accent) 45%, transparent);
   outline-offset: 0;
-  border-radius: 6px;
+  border-radius: 8px;
 }
 
 ::-webkit-scrollbar {

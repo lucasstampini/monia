@@ -57,11 +57,11 @@ const settingsSchema = z.object({
 
 type Handlers = { [K in keyof InvokeApi]: (...args: unknown[]) => ReturnType<InvokeApi[K]> | Awaited<ReturnType<InvokeApi[K]>> }
 
-export function registerIpcHandlers(db: Db, getWindow: () => BrowserWindow | null, getAccent: () => string): void {
+export function registerIpcHandlers(db: Db, getWindow: () => BrowserWindow | null): void {
   let syncing = false
 
   const handlers: Handlers = {
-    getAppearance: () => ({ accent: getAccent(), platform: process.platform }),
+    getAppearance: () => ({ platform: process.platform }),
     listAccounts: () => queries.listAccounts(db),
     listCategories: () => queries.listCategories(db),
     listCategoryUsage: () => queries.listCategoryUsage(db),

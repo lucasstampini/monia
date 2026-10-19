@@ -50,7 +50,7 @@ function Panel({
   children: React.ReactNode
 }) {
   return (
-    <section className="rounded-panel bg-control-bg p-4 shadow-[var(--shadow-control)]">
+    <section className="rounded-panel bg-control-bg p-4 shadow-control">
       <div className="flex items-start justify-between gap-3">
         <div>
           <h2 className="font-semibold">{title}</h2>
@@ -75,10 +75,10 @@ function StatTile({
   tone?: 'up' | 'down'
 }) {
   return (
-    <div className="rounded-panel bg-control-bg px-4 py-3 shadow-[var(--shadow-control)]">
+    <div className="rounded-panel bg-control-bg px-4 py-3 shadow-control">
       <div className="text-sm text-label-secondary">{label}</div>
       <div
-        className={`mt-0.5 text-[22px] font-semibold leading-7 ${tone === 'up' ? 'text-income' : tone === 'down' ? 'text-expense' : ''}`}
+        className={`tabular mt-1 text-[22px] font-medium leading-7 ${tone === 'up' ? 'text-income' : tone === 'down' ? 'text-expense' : ''}`}
       >
         {value}
       </div>
@@ -276,7 +276,7 @@ function AllocationList({ allocation, targetsDefined }: { allocation: Allocation
           </div>
           <div className="relative h-2 rounded-full bg-fill-quaternary">
             <motion.div
-              className="h-full rounded-full bg-[var(--chart-series-1)]"
+              className="h-full rounded-full bg-[var(--chart-primary)]"
               initial={{ width: 0 }}
               animate={{ width: `${Math.min(100, slice.currentPercent)}%` }}
               transition={softSpring}
@@ -394,7 +394,7 @@ const CLASS_COLOR_TOKEN: Record<KrakenClass, keyof ReturnType<typeof useThemeCol
 
 function ChartTooltip({ title, value }: { title: string; value: string }) {
   return (
-    <div className="rounded-control bg-window-bg px-2.5 py-1.5 text-sm shadow-[var(--shadow-panel)]">
+    <div className="rounded-control bg-window-bg px-2.5 py-1.5 text-sm shadow-panel">
       <div className="text-label-secondary">{title}</div>
       <div className="tabular font-semibold">{value}</div>
     </div>
@@ -495,7 +495,7 @@ function ProfitByClassChart({ stats }: { stats: InvestmentsOverview['stats'] }) 
           />
           <Bar dataKey="profitCents" radius={4} barSize={18} isAnimationActive={false}>
             {stats.profitByClass.map((p) => (
-              <Cell key={p.label} fill={p.profitCents >= 0 ? colors.series1 : colors.red} />
+              <Cell key={p.label} fill={p.profitCents >= 0 ? colors.gain : colors.loss} />
             ))}
             <LabelList
               dataKey="profitCents"
@@ -563,7 +563,7 @@ function MaturityChart({ stats }: { stats: InvestmentsOverview['stats'] }) {
               ) : null
             }}
           />
-          <Bar dataKey="valueCents" radius={[4, 4, 0, 0]} fill={colors.series1} isAnimationActive={false}>
+          <Bar dataKey="valueCents" radius={[4, 4, 0, 0]} fill={colors.primary} isAnimationActive={false}>
             <LabelList
               dataKey="valueCents"
               position="top"
@@ -605,7 +605,7 @@ function HistoryChart({ history }: { history: InvestmentsOverview['history'] }) 
               const point = payload?.[0]?.payload as (typeof data)[number] | undefined
               if (!active || !point) return null
               return (
-                <div className="rounded-control bg-window-bg px-2.5 py-1.5 text-sm shadow-[var(--shadow-panel)]">
+                <div className="rounded-control bg-window-bg px-2.5 py-1.5 text-sm shadow-panel">
                   <div className="text-label-secondary">{formatDate(point.date)}</div>
                   <div className="tabular font-semibold">{formatMoney(point.totalCents)}</div>
                 </div>
@@ -615,10 +615,10 @@ function HistoryChart({ history }: { history: InvestmentsOverview['history'] }) 
           <Area
             type="monotone"
             dataKey="totalCents"
-            stroke={colors.series1}
+            stroke={colors.primary}
             strokeWidth={2}
-            fill={colors.series1}
-            fillOpacity={0.12}
+            fill={colors.primary}
+            fillOpacity={0.08}
             activeDot={{ r: 4 }}
           />
         </AreaChart>

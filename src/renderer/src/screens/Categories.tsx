@@ -155,7 +155,7 @@ function CategorySheet({
                 aria-checked={draft.color.toUpperCase() === color}
                 aria-label={color}
                 onClick={() => setDraft({ ...draft, color })}
-                className="flex size-6 items-center justify-center rounded-full shadow-[var(--shadow-control)]"
+                className="flex size-6 items-center justify-center rounded-full shadow-control"
                 style={{ background: color }}
               >
                 {draft.color.toUpperCase() === color && <Check size={13} strokeWidth={3} className="text-white" />}

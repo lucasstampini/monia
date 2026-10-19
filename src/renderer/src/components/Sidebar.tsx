@@ -2,6 +2,7 @@ import { motion } from 'framer-motion'
 import { CreditCard, Inbox, Landmark, LayoutDashboard, ListFilter, ListOrdered, PiggyBank, RefreshCw, Settings, Tags } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import type { Account } from '@shared/types'
+import { MoniaMark, MoniaWordmark } from './Brand'
 import { formatDateTime } from '../lib/format'
 import { spring } from '../lib/motion'
 
@@ -30,13 +31,21 @@ function SidebarItem({
       type="button"
       onClick={onClick}
       aria-current={selected ? 'page' : undefined}
-      className="no-drag relative flex h-7 w-full items-center gap-2 rounded-control px-2 text-left"
+      className="no-drag relative flex h-[30px] w-full items-center gap-2 rounded-control px-2 text-left hover:bg-fill-quaternary"
     >
       {selected && (
-        <motion.span layoutId="sidebar-selection" transition={spring} className="absolute inset-0 rounded-control bg-fill-tertiary" />
+        <motion.span
+          layoutId="sidebar-selection"
+          transition={spring}
+          className="absolute inset-0 rounded-control bg-control-bg shadow-control"
+        />
       )}
-      <Icon size={16} strokeWidth={1.5} className="relative shrink-0 text-accent" />
-      <span className="relative flex-1 truncate">{label}</span>
+      <Icon
+        size={16}
+        strokeWidth={1.5}
+        className={`relative shrink-0 ${selected ? 'text-accent' : 'text-label-secondary'}`}
+      />
+      <span className={`relative flex-1 truncate ${selected ? 'font-medium' : ''}`}>{label}</span>
       {badge ? (
         <span className="tabular relative rounded-full bg-fill-tertiary px-1.5 text-xs font-medium text-label-secondary">
           {badge}
@@ -46,8 +55,9 @@ function SidebarItem({
   )
 }
 
+/** Títulos de seção em Geist Mono minúsculo, como os rótulos da marca. */
 function SectionTitle({ children }: { children: string }) {
-  return <h2 className="mb-0.5 mt-4 px-2 text-xs font-semibold text-label-tertiary">{children}</h2>
+  return <h2 className="mono mb-1 mt-4 px-2 text-xs lowercase text-label-secondary">{children}</h2>
 }
 
 /** Source list no estilo do Finder, sobre o material translúcido da janela. */
@@ -74,8 +84,13 @@ export function Sidebar({
   return (
     <nav
       aria-label="Navegação"
-      className="drag flex w-[220px] shrink-0 flex-col border-r border-[var(--separator)] bg-[var(--sidebar-background)] px-2.5 pb-3 pt-[52px] [html[data-platform=darwin]_&]:bg-transparent"
+      className="drag flex w-[220px] shrink-0 flex-col border-r border-[var(--separator)] bg-[var(--sidebar-background)] px-2.5 pb-3 [html[data-platform=darwin]_&]:bg-transparent"
     >
+      {/* Faixa da barra de título: marca à esquerda (no macOS, depois dos semáforos). */}
+      <div className="flex h-[52px] shrink-0 items-center gap-2 px-2 [html[data-platform=darwin]_&]:pl-[76px]">
+        <MoniaMark size={22} />
+        <MoniaWordmark size={17} />
+      </div>
       <div className="flex-1 overflow-y-auto">
         <SectionTitle>Visão geral</SectionTitle>
         <SidebarItem icon={LayoutDashboard} label="Painel" selected={is('dashboard')} onClick={() => onSelect({ screen: 'dashboard' })} />

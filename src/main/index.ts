@@ -1,6 +1,5 @@
 import { join } from 'node:path'
-import { app, BrowserWindow, nativeTheme, shell, systemPreferences, type BrowserWindowConstructorOptions } from 'electron'
-import { eventChannels } from '@shared/ipc'
+import { app, BrowserWindow, nativeTheme, shell, type BrowserWindowConstructorOptions } from 'electron'
 import { openDatabase } from './db/client'
 import { registerIpcHandlers } from './ipc/handlers'
 import { createLogger, initLogger } from './logger'
@@ -8,18 +7,15 @@ import { buildMenu } from './menu'
 
 let mainWindow: BrowserWindow | null = null
 
-/** Cor de destaque do sistema; fallback para o systemBlue claro/escuro. */
-function accentColor(): string {
-  if (process.platform === 'darwin' || process.platform === 'win32') {
-    try {
-      const rgba = systemPreferences.getAccentColor() // "RRGGBBAA"
-      if (/^[0-9a-f]{8}$/i.test(rgba)) return `#${rgba.slice(0, 6)}`
-    } catch {
-      // segue para o fallback
-    }
-  }
-  return nativeTheme.shouldUseDarkColors ? '#0A84FF' : '#007AFF'
+// A pasta de dados (banco, segredos, logs) fica fixa, independente do nome do app.
+// O app passou a se chamar "monia"; sem isso, o executável empacotado procuraria
+// os dados em outra pasta e abriria vazio. `--user-data-dir` continua valendo (testes isolados).
+if (!app.commandLine.hasSwitch('user-data-dir')) {
+  app.setPath('userData', join(app.getPath('appData'), 'analise-de-gastos'))
 }
+
+/** Ícone da monia (Windows e Linux; no macOS o ícone vem do pacote .app). */
+const APP_ICON = join(app.getAppPath(), 'resources', 'icon.png')
 
 /** Material da janela por plataforma: vidro no macOS, Mica no Windows, sólido no Linux. */
 function platformWindowOptions(): BrowserWindowConstructorOptions {
@@ -51,7 +47,8 @@ function createWindow(): void {
     minWidth: 900,
     minHeight: 560,
     show: false,
-    title: 'Análise de Gastos',
+    title: 'monia',
+    icon: process.platform === 'darwin' ? undefined : APP_ICON,
     ...platformWindowOptions(),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
@@ -80,8 +77,8 @@ function createWindow(): void {
   }
 }
 
-function broadcastAppearance(): void {
-  mainWindow?.webContents.send(eventChannels.onAccentChange, accentColor())
+/** No Windows, os botões nativos da janela acompanham o tema claro/escuro. */
+function updateTitleBarOverlay(): void {
   if (process.platform === 'win32') {
     mainWindow?.setTitleBarOverlay({ symbolColor: nativeTheme.shouldUseDarkColors ? '#FFFFFF' : '#000000' })
   }
@@ -99,12 +96,11 @@ app.whenReady().then(() => {
   const db = openDatabase(join(app.getPath('userData'), 'financas.db'), join(app.getAppPath(), 'drizzle'))
   const getWindow = () => mainWindow
 
-  registerIpcHandlers(db, getWindow, accentColor)
+  registerIpcHandlers(db, getWindow)
   buildMenu(getWindow)
   createWindow()
 
-  nativeTheme.on('updated', broadcastAppearance)
-  if (process.platform === 'win32') systemPreferences.on('accent-color-changed', broadcastAppearance)
+  nativeTheme.on('updated', updateTitleBarOverlay)
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()

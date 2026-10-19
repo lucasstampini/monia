@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 96 96">
+  <!-- monia: ":" + cursor. Fonte do ícone do app; o PNG é gerado a partir deste arquivo. -->
+  <rect width="96" height="96" rx="22" fill="#1C1C1E"/>
+  <circle cx="31" cy="34" r="7" fill="oklch(0.75 0.18 150)"/>
+  <circle cx="31" cy="62" r="7" fill="oklch(0.75 0.18 150)"/>
+  <rect x="48" y="63" width="24" height="6" fill="#F5F5F7"/>
+</svg>

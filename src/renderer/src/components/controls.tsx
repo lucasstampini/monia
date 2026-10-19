@@ -1,14 +1,15 @@
 import { forwardRef, type ButtonHTMLAttributes, type InputHTMLAttributes, type SelectHTMLAttributes } from 'react'
 
-// Controles básicos no estilo AppKit: 22px de altura, raio de 6px, sombra discreta.
+// Controles básicos (identidade monia): 26px de altura, raio de 8px, borda de 1px discreta.
+// O botão principal é grafite (invertido no modo escuro), como na marca.
 
 type ButtonVariant = 'default' | 'primary' | 'plain' | 'destructive'
 
 const buttonVariants: Record<ButtonVariant, string> = {
-  default: 'bg-control-bg shadow-[var(--shadow-control)] active:bg-fill-tertiary',
-  primary: 'bg-accent text-[var(--accent-text)] shadow-[var(--shadow-control)] active:brightness-90',
+  default: 'bg-control-bg shadow-control hover:bg-fill-quaternary active:bg-fill-tertiary',
+  primary: 'bg-primary text-on-primary hover:opacity-90 active:opacity-80',
   plain: 'hover:bg-fill-quaternary active:bg-fill-tertiary',
-  destructive: 'bg-control-bg text-expense shadow-[var(--shadow-control)] active:bg-fill-tertiary'
+  destructive: 'bg-control-bg text-expense shadow-control active:bg-fill-tertiary'
 }
 
 export function Button({
@@ -19,7 +20,7 @@ export function Button({
   return (
     <button
       type="button"
-      className={`no-drag inline-flex h-[22px] items-center gap-1.5 rounded-control px-2.5 text-base font-medium transition-colors disabled:opacity-40 ${buttonVariants[variant]} ${className}`}
+      className={`no-drag inline-flex h-[26px] items-center gap-1.5 rounded-control px-3 text-base font-medium transition-[background-color,opacity] disabled:opacity-40 ${buttonVariants[variant]} ${className}`}
       {...props}
     />
   )
@@ -43,7 +44,7 @@ export const TextField = forwardRef<HTMLInputElement, InputHTMLAttributes<HTMLIn
   return (
     <input
       ref={ref}
-      className={`no-drag h-[22px] rounded-control bg-control-bg px-2 text-base shadow-[var(--shadow-control)] outline-none placeholder:text-label-tertiary ${className}`}
+      className={`no-drag h-[26px] rounded-control bg-control-bg px-2.5 text-base shadow-field outline-none placeholder:text-label-tertiary ${className}`}
       {...props}
     />
   )
@@ -70,7 +71,7 @@ export function Switch({
         className="peer sr-only"
       />
       <span className="h-[22px] w-[38px] rounded-full bg-fill-tertiary transition-colors peer-checked:bg-accent peer-focus-visible:outline peer-focus-visible:outline-[3px] peer-focus-visible:outline-[color-mix(in_srgb,var(--accent)_50%,transparent)]" />
-      <span className="absolute left-[2px] top-[2px] size-[18px] rounded-full bg-white shadow-[var(--shadow-control)] transition-transform peer-checked:translate-x-4" />
+      <span className="absolute left-[2px] top-[2px] size-[18px] rounded-full bg-white shadow-control transition-transform peer-checked:translate-x-4" />
     </label>
   )
 }
@@ -78,7 +79,7 @@ export function Switch({
 export function Select({ className = '', ...props }: SelectHTMLAttributes<HTMLSelectElement>) {
   return (
     <select
-      className={`no-drag h-[22px] rounded-control bg-control-bg pl-2 pr-1 text-base shadow-[var(--shadow-control)] outline-none ${className}`}
+      className={`no-drag h-[26px] rounded-control bg-control-bg pl-2.5 pr-1 text-base shadow-field outline-none ${className}`}
       {...props}
     />
   )

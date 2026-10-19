@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion'
-import { BarChart3, CalendarClock, Repeat, Repeat2, TrendingUp, type LucideIcon } from 'lucide-react'
+import { CalendarClock, Repeat, Repeat2, TrendingUp, type LucideIcon } from 'lucide-react'
+import { MoniaMark } from '../components/Brand'
 import { useEffect, useMemo, useState } from 'react'
 import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import type { Category, DashboardData, MonthSpending, SavingSuggestion } from '@shared/types'
@@ -21,7 +22,7 @@ const PERIODS = [
 
 function Panel({ title, subtitle, children, className = '' }: { title: string; subtitle?: string; children: React.ReactNode; className?: string }) {
   return (
-    <section className={`rounded-panel bg-control-bg p-4 shadow-[var(--shadow-control)] ${className}`}>
+    <section className={`rounded-panel bg-control-bg p-4 shadow-control ${className}`}>
       <h2 className="font-semibold">{title}</h2>
       {subtitle && <p className="text-sm text-label-secondary">{subtitle}</p>}
       <div className="mt-3">{children}</div>
@@ -31,9 +32,9 @@ function Panel({ title, subtitle, children, className = '' }: { title: string; s
 
 function StatTile({ label, value, detail }: { label: string; value: string; detail?: string }) {
   return (
-    <div className="rounded-panel bg-control-bg px-4 py-3 shadow-[var(--shadow-control)]">
+    <div className="rounded-panel bg-control-bg px-4 py-3 shadow-control">
       <div className="text-sm text-label-secondary">{label}</div>
-      <div className="mt-0.5 text-[22px] font-semibold leading-7">{value}</div>
+      <div className="tabular mt-1 text-[22px] font-medium leading-7">{value}</div>
       {detail && <div className="mt-0.5 text-xs text-label-secondary">{detail}</div>}
     </div>
   )
@@ -66,8 +67,13 @@ export function Dashboard({
       <>
         <Toolbar title="Painel" />
         <EmptyState
-          icon={BarChart3}
-          title="Bem-vindo"
+          visual={
+            <div className="mb-3 flex flex-col items-center gap-3">
+              <MoniaMark size={72} />
+              <span className="mono text-sm text-label-secondary">money + IA, no seu computador</span>
+            </div>
+          }
+          title="Bem-vindo à monia"
           message="Configure a Pluggy em Configurações e sincronize para ver gastos por categoria, por mês e a projeção da próxima fatura."
           action={
             <Button variant="primary" onClick={onSync}>
@@ -243,7 +249,7 @@ function MonthlyChart({
               const point = payload?.[0]?.payload as (typeof chartData)[number] | undefined
               if (!active || !point) return null
               return (
-                <div className="rounded-control bg-window-bg px-2.5 py-1.5 text-sm shadow-[var(--shadow-panel)]">
+                <div className="rounded-control bg-window-bg px-2.5 py-1.5 text-sm shadow-panel">
                   <div className="text-label-secondary">{formatMonthLong(point.month)}</div>
                   <div className="tabular font-semibold">{formatMoney(point.value)}</div>
                 </div>
@@ -252,7 +258,7 @@ function MonthlyChart({
           />
           <Bar dataKey="value" radius={[4, 4, 0, 0]} onClick={(entry) => onSelect((entry as unknown as { month: string }).month)} cursor="pointer">
             {chartData.map((point) => (
-              <Cell key={point.month} fill={colors.series1} fillOpacity={point.month === selected ? 1 : 0.45} />
+              <Cell key={point.month} fill={point.month === selected ? colors.primary : colors.primaryMuted} />
             ))}
           </Bar>
         </BarChart>
@@ -286,7 +292,7 @@ function CategoryBreakdown({ month, categories }: { month: MonthSpending; catego
           </div>
           <div className="h-1.5 overflow-hidden rounded-full bg-fill-quaternary">
             <motion.div
-              className="h-full rounded-full bg-[var(--chart-series-1)]"
+              className="h-full rounded-full bg-[var(--chart-primary)]"
               initial={{ width: 0 }}
               animate={{ width: `${(entry.cents / max) * 100}%` }}
               transition={softSpring}

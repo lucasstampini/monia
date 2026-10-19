@@ -256,7 +256,7 @@ export function Transactions({
         subtitle={list.data ? `${rows.length} transações · saldo ${formatMoney(total)}` : undefined}
       >
         <div className="relative">
-          <Search size={13} className="pointer-events-none absolute left-2 top-[5px] text-label-tertiary" />
+          <Search size={13} className="pointer-events-none absolute left-2.5 top-[7px] text-label-tertiary" />
           <TextField
             ref={searchRef}
             value={search}
@@ -487,7 +487,7 @@ export function Transactions({
         {notice && (
           <motion.div
             role="status"
-            className="pointer-events-auto absolute bottom-4 left-1/2 z-20 flex max-w-[80%] -translate-x-1/2 items-center gap-2 rounded-panel bg-window-bg px-3 py-2 shadow-[var(--shadow-panel)]"
+            className="pointer-events-auto absolute bottom-4 left-1/2 z-20 flex max-w-[80%] -translate-x-1/2 items-center gap-2 rounded-panel bg-window-bg px-3 py-2 shadow-panel"
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 8 }}
@@ -567,7 +567,7 @@ function Inspector({
       <p className="mb-1 select-text break-words font-semibold">{transaction.descriptionRaw}</p>
       <Amount cents={transaction.amountCents} className="text-[22px] font-semibold leading-7" />
 
-      <dl className="mt-4 divide-y divide-[var(--separator)] rounded-panel bg-control-bg px-3 shadow-[var(--shadow-control)]">
+      <dl className="mt-4 divide-y divide-[var(--separator)] rounded-panel bg-control-bg px-3 shadow-control">
         {rows.map(([label, value]) => (
           <div key={label} className="flex justify-between gap-3 py-1.5">
             <dt className="text-label-secondary">{label}</dt>
