@@ -1,13 +1,16 @@
-import { and, count, eq } from 'drizzle-orm'
+import { and, count, eq, inArray } from 'drizzle-orm'
 import type { MatchType } from '@shared/types'
 import type { Db } from './client'
 import { categories, rules, settings } from './schema'
 
 /** Versão atual dos dados iniciais. Incrementar ao adicionar um bloco novo em `seed`. */
-const SEED_VERSION = 2
+const SEED_VERSION = 3
 
-/** Categorias que não são consumo: ficam fora dos gráficos de gasto para não contar em dobro. */
-export const NON_SPENDING_CATEGORIES = ['Pagamento de fatura', 'Transferência entre contas', 'Investimentos']
+/**
+ * Categorias que não são consumo: ficam fora dos gráficos para não contar em dobro.
+ * Usado só para marcar a flag `excludedFromSpending` na criação; depois o usuário decide.
+ */
+const NON_SPENDING_CATEGORIES = ['Pagamento de fatura', 'Transferência entre contas', 'Investimentos']
 
 // Cores das categorias: paleta de cores do sistema da Apple.
 const DEFAULT_CATEGORIES: { name: string; color: string }[] = [
@@ -139,6 +142,13 @@ export function seed(db: Db): boolean {
       insertRules(tx, DEFAULT_RULES, 0)
     }
     if (current < 2) insertRules(tx, RULES_V2, 20)
+    if (current < 3) {
+      // Antes o "não conta como gasto" era decidido pelo nome; agora é uma opção da categoria.
+      tx.update(categories)
+        .set({ excludedFromSpending: true })
+        .where(inArray(categories.name, NON_SPENDING_CATEGORIES))
+        .run()
+    }
     if (current < SEED_VERSION) {
       tx.insert(settings)
         .values({ key: 'seedVersion', value: String(SEED_VERSION) })

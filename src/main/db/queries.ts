@@ -2,7 +2,9 @@ import { and, asc, desc, eq, gte, inArray, isNull, like, ne, or, sql, type SQL }
 import type {
   Account,
   Category,
+  CategoryInput,
   CategorySource,
+  CategoryUsage,
   DashboardData,
   MonthSpending,
   ReviewGroup,
@@ -18,7 +20,6 @@ import { resolveWithoutAi } from '../pipeline/categorize'
 import { sortRules } from '../pipeline/rules'
 import type { Db } from './client'
 import { accounts, aiCache, categories, rules, transactions } from './schema'
-import { NON_SPENDING_CATEGORIES } from './seed'
 
 /** Mês de competência: fatura para cartão, mês da data para conta. */
 const competenceMonth = sql<string>`coalesce(${transactions.statementMonth}, substr(${transactions.date}, 1, 7))`
@@ -35,6 +36,64 @@ export function listAccounts(db: Db): Account[] {
 
 export function listCategories(db: Db): Category[] {
   return db.select().from(categories).orderBy(asc(categories.name)).all()
+}
+
+// ---------- Categorias ----------
+
+export function listCategoryUsage(db: Db): CategoryUsage[] {
+  const txCounts = db
+    .select({ categoryId: transactions.categoryId, n: sql<number>`count(*)` })
+    .from(transactions)
+    .groupBy(transactions.categoryId)
+    .all()
+  const ruleCounts = db
+    .select({ categoryId: rules.categoryId, n: sql<number>`count(*)` })
+    .from(rules)
+    .groupBy(rules.categoryId)
+    .all()
+  return listCategories(db).map((c) => ({
+    categoryId: c.id,
+    transactions: txCounts.find((row) => row.categoryId === c.id)?.n ?? 0,
+    rules: ruleCounts.find((row) => row.categoryId === c.id)?.n ?? 0
+  }))
+}
+
+export function saveCategory(db: Db, input: CategoryInput): Category {
+  const name = input.name.trim()
+  const clash = db.select().from(categories).where(sql`lower(${categories.name}) = lower(${name})`).get()
+  if (clash && clash.id !== input.id) throw new Error(`Já existe uma categoria chamada "${clash.name}".`)
+
+  const values = { name, color: input.color, excludedFromSpending: input.excludedFromSpending }
+  const saved =
+    input.id !== undefined
+      ? db.update(categories).set(values).where(eq(categories.id, input.id)).returning().get()
+      : db.insert(categories).values(values).returning().get()
+  if (!saved) throw new Error('Categoria não encontrada')
+  return saved
+}
+
+/**
+ * Exclui uma categoria. Transações e regras que a usavam vão para `replacementId`;
+ * sem substituta, as transações ficam sem categoria (caem em Revisar) e as regras são apagadas.
+ */
+export function deleteCategory(db: Db, id: number, replacementId: number | null): void {
+  if (replacementId === id) throw new Error('A categoria substituta precisa ser outra.')
+  db.transaction((tx) => {
+    if (replacementId !== null) {
+      tx.update(transactions).set({ categoryId: replacementId }).where(eq(transactions.categoryId, id)).run()
+      tx.update(rules).set({ categoryId: replacementId }).where(eq(rules.categoryId, id)).run()
+    } else {
+      tx.update(transactions)
+        .set({ categoryId: null, categorySource: null })
+        .where(eq(transactions.categoryId, id))
+        .run()
+      tx.delete(rules).where(eq(rules.categoryId, id)).run()
+    }
+    // Respostas antigas da IA apontando para ela: apaga, para a IA poder tentar de novo.
+    tx.delete(aiCache).where(eq(aiCache.categoryId, id)).run()
+    tx.delete(categories).where(eq(categories.id, id)).run()
+  })
+  reapplyRules(db)
 }
 
 export function listRules(db: Db): Rule[] {
@@ -224,7 +283,7 @@ export function getDashboard(db: Db, monthCount: number): DashboardData {
   const excludedIds = db
     .select({ id: categories.id })
     .from(categories)
-    .where(inArray(categories.name, NON_SPENDING_CATEGORIES))
+    .where(eq(categories.excludedFromSpending, true))
     .all()
     .map((c) => c.id)
   const isSpending = (categoryId: number | null) => categoryId === null || !excludedIds.includes(categoryId)

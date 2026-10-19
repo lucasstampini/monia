@@ -20,6 +20,22 @@ export interface Category {
   name: string
   parentId: number | null
   color: string
+  /** Não entra nos gráficos de gasto/renda (ex.: pagamento de fatura, investimentos). */
+  excludedFromSpending: boolean
+}
+
+export interface CategoryInput {
+  id?: number
+  name: string
+  color: string
+  excludedFromSpending: boolean
+}
+
+/** Quantas transações e regras usam cada categoria (para avisar antes de excluir). */
+export interface CategoryUsage {
+  categoryId: number
+  transactions: number
+  rules: number
 }
 
 export interface Transaction {

@@ -1,5 +1,17 @@
 import { AnimatePresence, motion } from 'framer-motion'
-import { ChevronDown, ChevronUp, Inbox, Landmark, PanelRight, Search, SlidersHorizontal, Sparkles, Wand2, X } from 'lucide-react'
+import {
+  ChevronDown,
+  ChevronRight,
+  ChevronUp,
+  Inbox,
+  Landmark,
+  PanelRight,
+  Search,
+  SlidersHorizontal,
+  Sparkles,
+  Wand2,
+  X
+} from 'lucide-react'
 import { useEffect, useMemo, useState, type RefObject } from 'react'
 import type { Account, Category, Transaction, TransactionFilter } from '@shared/types'
 import { CategoryLabel } from '../components/CategoryLabel'
@@ -7,7 +19,7 @@ import { Button, IconButton, Select, TextField } from '../components/controls'
 import { EmptyState } from '../components/EmptyState'
 import { Popover } from '../components/Popover'
 import { Toolbar } from '../components/Toolbar'
-import { formatDate, formatMoney, formatMonthLong } from '../lib/format'
+import { formatDate, formatMoney, formatMonthLong, formatMonthTitle } from '../lib/format'
 import { softSpring, spring } from '../lib/motion'
 import { errorMessage, useAsync } from '../lib/useAsync'
 
@@ -15,6 +27,11 @@ type SortKey = 'date' | 'description' | 'category' | 'amount'
 type Sort = { key: SortKey; ascending: boolean }
 
 const UNCATEGORIZED = 'none'
+
+/** Mês de competência: fatura para cartão, mês da data para conta (mesma regra do Painel). */
+function competenceMonth(row: Transaction): string {
+  return row.statementMonth ?? row.date.slice(0, 7)
+}
 
 function compare(a: Transaction, b: Transaction, key: SortKey, categoryName: (id: number | null) => string): number {
   switch (key) {
@@ -91,13 +108,10 @@ export function Transactions({
     categoryId: categoryFilter === '' ? undefined : categoryFilter === UNCATEGORIZED ? null : Number(categoryFilter)
   }
   const months = useAsync(() => window.api.listMonths(), [dataVersion])
-  const list = useAsync(() => window.api.listTransactions(filter), [
-    dataVersion,
-    debouncedSearch,
-    accountId,
-    month,
-    categoryFilter
-  ])
+  const list = useAsync(
+    () => window.api.listTransactions(filter),
+    [dataVersion, debouncedSearch, accountId, month, categoryFilter]
+  )
 
   const categoriesById = useMemo(() => new Map(categories.map((c) => [c.id, c])), [categories])
   const categoryName = (id: number | null) => (id === null ? 'Sem categoria' : (categoriesById.get(id)?.name ?? ''))
@@ -107,6 +121,39 @@ export function Transactions({
     return sort.ascending ? sorted : sorted.reverse()
     // categoryName depende só de categoriesById
   }, [list.data, sort, categoriesById])
+
+  // Divide por mês de competência (fatura no cartão, data na conta), como no Painel.
+  // A ordem dos meses segue a ordenação por data; dentro do mês vale a coluna escolhida.
+  const monthGroups = useMemo(() => {
+    const groups = new Map<string, { month: string; rows: Transaction[]; outCents: number; inCents: number }>()
+    for (const row of rows) {
+      const month = competenceMonth(row)
+      const group = groups.get(month) ?? { month, rows: [], outCents: 0, inCents: 0 }
+      group.rows.push(row)
+      if (row.amountCents < 0) group.outCents += row.amountCents
+      else group.inCents += row.amountCents
+      groups.set(month, group)
+    }
+    const ascending = sort.key === 'date' && sort.ascending
+    return [...groups.values()].sort((a, b) =>
+      ascending ? a.month.localeCompare(b.month) : b.month.localeCompare(a.month)
+    )
+  }, [rows, sort])
+
+  const [collapsed, setCollapsed] = useState<Set<string>>(new Set())
+  const toggleMonth = (month: string) =>
+    setCollapsed((previous) => {
+      const next = new Set(previous)
+      if (next.has(month)) next.delete(month)
+      else next.add(month)
+      return next
+    })
+  /** Linhas na ordem em que aparecem na tela (para navegar com as setas). */
+  const visibleRows = useMemo(
+    () => monthGroups.filter((g) => !collapsed.has(g.month)).flatMap((g) => g.rows),
+    [monthGroups, collapsed]
+  )
+  const columnCount = accountId ? 4 : 5
 
   const selected = rows.find((row) => row.id === selectedId) ?? null
   const total = rows.reduce((sum, row) => sum + row.amountCents, 0)
@@ -119,8 +166,9 @@ export function Transactions({
       if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return
       if ((event.target as HTMLElement).closest('input, select, textarea')) return
       event.preventDefault()
-      const index = rows.findIndex((row) => row.id === selectedId)
-      const next = rows[Math.max(0, Math.min(rows.length - 1, index + (event.key === 'ArrowDown' ? 1 : -1)))]
+      const index = visibleRows.findIndex((row) => row.id === selectedId)
+      const next =
+        visibleRows[Math.max(0, Math.min(visibleRows.length - 1, index + (event.key === 'ArrowDown' ? 1 : -1)))]
       if (next) {
         setSelectedId(next.id)
         document.getElementById(`tx-${next.id}`)?.scrollIntoView({ block: 'nearest' })
@@ -128,7 +176,7 @@ export function Transactions({
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [rows, selectedId])
+  }, [visibleRows, selectedId])
 
   async function recategorize(transaction: Transaction, value: string) {
     const categoryId = value === UNCATEGORIZED ? null : Number(value)
@@ -196,7 +244,12 @@ export function Transactions({
         </div>
         <Popover
           trigger={({ toggle, open }) => (
-            <IconButton onClick={toggle} aria-label="Filtros" aria-expanded={open} className={activeFilters ? 'text-accent' : ''}>
+            <IconButton
+              onClick={toggle}
+              aria-label="Filtros"
+              aria-expanded={open}
+              className={activeFilters ? 'text-accent' : ''}
+            >
               <SlidersHorizontal size={16} strokeWidth={1.5} />
               {activeFilters > 0 && <span className="text-xs font-semibold">{activeFilters}</span>}
             </IconButton>
@@ -217,7 +270,11 @@ export function Transactions({
             <label htmlFor="filter-category" className="text-label-secondary">
               Categoria
             </label>
-            <Select id="filter-category" value={categoryFilter} onChange={(event) => setCategoryFilter(event.target.value)}>
+            <Select
+              id="filter-category"
+              value={categoryFilter}
+              onChange={(event) => setCategoryFilter(event.target.value)}
+            >
               <option value="">Todas</option>
               <option value={UNCATEGORIZED}>Sem categoria</option>
               {categories.map((c) => (
@@ -265,7 +322,11 @@ export function Transactions({
               }
             />
           ) : empty ? (
-            <EmptyState icon={Search} title="Nada encontrado" message="Nenhuma transação corresponde à busca e aos filtros." />
+            <EmptyState
+              icon={Search}
+              title="Nada encontrado"
+              message="Nenhuma transação corresponde à busca e aos filtros."
+            />
           ) : (
             <table className="w-full border-separate border-spacing-0">
               <thead>
@@ -274,51 +335,92 @@ export function Transactions({
                   {header('description', 'Descrição')}
                   {header('category', 'Categoria')}
                   {!accountId && (
-                    <th scope="col" className="sticky top-0 z-10 border-b border-[var(--separator)] bg-content-bg px-3 py-1 text-left font-medium text-label-secondary">
+                    <th
+                      scope="col"
+                      className="sticky top-0 z-10 border-b border-[var(--separator)] bg-content-bg px-3 py-1 text-left font-medium text-label-secondary"
+                    >
                       Conta
                     </th>
                   )}
                   {header('amount', 'Valor', 'right')}
                 </tr>
               </thead>
-              <tbody>
-                {rows.map((row, index) => {
-                  const isSelected = row.id === selectedId
-                  return (
-                    <tr
-                      key={row.id}
-                      id={`tx-${row.id}`}
-                      onClick={() => setSelectedId(row.id)}
-                      aria-selected={isSelected}
-                      className={`h-6 ${isSelected ? 'bg-accent text-white [&_*]:!text-white' : index % 2 ? 'bg-row-alt' : ''}`}
-                    >
-                      <td className="tabular whitespace-nowrap px-3 text-label-secondary">{formatDate(row.date)}</td>
-                      <td className="max-w-0 w-1/2 px-3">
-                        <span className="block truncate" title={row.descriptionRaw}>
-                          {row.descriptionRaw}
-                          {row.installmentTotal && (
-                            <span className="tabular ml-1.5 text-label-secondary">
-                              {row.installmentCurrent}/{row.installmentTotal}
-                            </span>
-                          )}
-                        </span>
-                      </td>
-                      <td className="px-1.5">
-                        <CategoryPicker
-                          value={row.categoryId}
-                          categories={categories}
-                          categoriesById={categoriesById}
-                          onChange={(value) => void recategorize(row, value)}
-                        />
-                      </td>
-                      {!accountId && <td className="max-w-[160px] truncate px-3 text-label-secondary">{row.accountName}</td>}
-                      <td className="whitespace-nowrap px-3 text-right">
-                        <Amount cents={row.amountCents} />
-                      </td>
+              {monthGroups.map((group) => {
+                const isCollapsed = collapsed.has(group.month)
+                return (
+                  <tbody key={group.month}>
+                    <tr>
+                      <th
+                        scope="rowgroup"
+                        colSpan={columnCount}
+                        className="sticky top-[25px] z-[5] border-b border-[var(--separator)] bg-window-bg/95 px-0 text-left font-normal backdrop-blur"
+                      >
+                        <button
+                          type="button"
+                          onClick={() => toggleMonth(group.month)}
+                          aria-expanded={!isCollapsed}
+                          className="flex h-8 w-full items-center gap-2 px-3"
+                        >
+                          <ChevronRight
+                            size={13}
+                            className={`shrink-0 text-label-secondary transition-transform ${isCollapsed ? '' : 'rotate-90'}`}
+                          />
+                          <span className="font-semibold">{formatMonthTitle(group.month)}</span>
+                          <span className="text-sm text-label-secondary">
+                            {group.rows.length} transaç{group.rows.length === 1 ? 'ão' : 'ões'}
+                          </span>
+                          <span className="tabular ml-auto flex items-baseline gap-3 text-sm">
+                            <span className="text-label-secondary">saídas {formatMoney(group.outCents)}</span>
+                            <span className="text-label-secondary">entradas {formatMoney(group.inCents)}</span>
+                            <span className="font-semibold">saldo {formatMoney(group.outCents + group.inCents)}</span>
+                          </span>
+                        </button>
+                      </th>
                     </tr>
-                  )
-                })}
-              </tbody>
+                    {!isCollapsed &&
+                      group.rows.map((row, index) => {
+                        const isSelected = row.id === selectedId
+                        return (
+                          <tr
+                            key={row.id}
+                            id={`tx-${row.id}`}
+                            onClick={() => setSelectedId(row.id)}
+                            aria-selected={isSelected}
+                            className={`h-6 ${isSelected ? 'bg-accent text-white [&_*]:!text-white' : index % 2 ? 'bg-row-alt' : ''}`}
+                          >
+                            <td className="tabular whitespace-nowrap px-3 text-label-secondary">
+                              {formatDate(row.date)}
+                            </td>
+                            <td className="max-w-0 w-1/2 px-3">
+                              <span className="block truncate" title={row.descriptionRaw}>
+                                {row.descriptionRaw}
+                                {row.installmentTotal && (
+                                  <span className="tabular ml-1.5 text-label-secondary">
+                                    {row.installmentCurrent}/{row.installmentTotal}
+                                  </span>
+                                )}
+                              </span>
+                            </td>
+                            <td className="px-1.5">
+                              <CategoryPicker
+                                value={row.categoryId}
+                                categories={categories}
+                                categoriesById={categoriesById}
+                                onChange={(value) => void recategorize(row, value)}
+                              />
+                            </td>
+                            {!accountId && (
+                              <td className="max-w-[160px] truncate px-3 text-label-secondary">{row.accountName}</td>
+                            )}
+                            <td className="whitespace-nowrap px-3 text-right">
+                              <Amount cents={row.amountCents} />
+                            </td>
+                          </tr>
+                        )
+                      })}
+                  </tbody>
+                )
+              })}
             </table>
           )}
         </div>
@@ -416,7 +518,12 @@ function Inspector({
   const source = sourceLabel(transaction.categorySource)
   const rows: [string, string][] = [
     ['Data da compra', formatDate(transaction.date)],
-    ['Competência', transaction.statementMonth ? `Fatura de ${formatMonthLong(transaction.statementMonth)}` : formatMonthLong(transaction.date.slice(0, 7))],
+    [
+      'Competência',
+      transaction.statementMonth
+        ? `Fatura de ${formatMonthLong(transaction.statementMonth)}`
+        : formatMonthLong(transaction.date.slice(0, 7))
+    ],
     ['Conta', transaction.accountName]
   ]
   if (transaction.installmentTotal) {

@@ -15,6 +15,13 @@
       "when": 1792431878836,
       "tag": "0001_legal_ricochet",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1792433440282,
+      "tag": "0002_overjoyed_terror",
+      "breakpoints": true
     }
   ]
 }

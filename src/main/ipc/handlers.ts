@@ -26,6 +26,12 @@ const ruleSchema = z.object({
   categoryId: id,
   priority: z.number().int().min(-1000).max(1000)
 })
+const categorySchema = z.object({
+  id: id.optional(),
+  name: z.string().trim().min(1, 'Dê um nome à categoria.').max(60),
+  color: z.string().regex(/^#[0-9a-f]{6}$/i),
+  excludedFromSpending: z.boolean()
+})
 const settingsSchema = z.object({
   pluggyClientId: z.string().max(200).optional(),
   pluggyClientSecret: z.string().max(500).optional(),
@@ -45,6 +51,10 @@ export function registerIpcHandlers(db: Db, getWindow: () => BrowserWindow | nul
     getAppearance: () => ({ accent: getAccent(), platform: process.platform }),
     listAccounts: () => queries.listAccounts(db),
     listCategories: () => queries.listCategories(db),
+    listCategoryUsage: () => queries.listCategoryUsage(db),
+    saveCategory: (input) => queries.saveCategory(db, categorySchema.parse(input)),
+    deleteCategory: (categoryId, replacementId) =>
+      queries.deleteCategory(db, id.parse(categoryId), id.nullable().parse(replacementId)),
     listMonths: () => queries.listMonths(db),
     listTransactions: (filter) => queries.listTransactions(db, filterSchema.parse(filter ?? {})),
     updateTransactionCategory: (transactionId, categoryId) => ({
@@ -91,9 +101,11 @@ export function registerIpcHandlers(db: Db, getWindow: () => BrowserWindow | nul
       try {
         return await handler(...args)
       } catch (error) {
+        // Validação: devolve só a mensagem legível do primeiro problema, não o JSON do Zod.
+        const friendly = error instanceof z.ZodError ? new Error(error.issues[0]?.message ?? 'Dados inválidos') : error
         // Argumentos não vão para o log: podem conter credenciais (saveSettings).
-        log.error(`IPC ${channel} falhou`, { error: error instanceof Error ? error.message : String(error) })
-        throw error
+        log.error(`IPC ${channel} falhou`, { error: friendly instanceof Error ? friendly.message : String(friendly) })
+        throw friendly
       }
     })
   }

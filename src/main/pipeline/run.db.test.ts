@@ -7,7 +7,7 @@ import { migrate } from 'drizzle-orm/better-sqlite3/migrator'
 import { count, eq } from 'drizzle-orm'
 import type { LLMProvider } from '../ai/provider'
 import { openDatabase } from '../db/client'
-import { categorizeGroup, deleteRule, listReviewGroups, listRules, updateTransactionCategory } from '../db/queries'
+import { categorizeGroup, deleteCategory, deleteRule, listReviewGroups, listRules, updateTransactionCategory } from '../db/queries'
 import * as schema from '../db/schema'
 import { categories, rules, settings, transactions } from '../db/schema'
 import { seed } from '../db/seed'
@@ -130,6 +130,32 @@ describe('runImport', () => {
     categorizeGroup(database, 'CAFE DO PONTO', alimentacao.id)
     expect(listReviewGroups(database).some((g) => g.descriptionNorm === 'CAFE DO PONTO')).toBe(false)
     expect(byExternal(database, 't4').categoryId).toBe(alimentacao.id)
+  })
+})
+
+describe('excluir categoria', () => {
+  const setup = async () => {
+    const database = db()
+    await runImport(database, fakeAdapter(batch), null)
+    const alimentacao = database.select().from(categories).where(eq(categories.name, 'Alimentação')).get()!
+    const mercado = database.select().from(categories).where(eq(categories.name, 'Mercado')).get()!
+    return { database, alimentacao, mercado }
+  }
+
+  it('com substituta: transações e regras são movidas', async () => {
+    const { database, alimentacao, mercado } = await setup()
+    deleteCategory(database, alimentacao.id, mercado.id)
+    expect(byExternal(database, 't1').categoryId).toBe(mercado.id)
+    expect(database.select().from(rules).where(eq(rules.categoryId, alimentacao.id)).all()).toEqual([])
+    expect(database.select().from(rules).where(eq(rules.pattern, 'IFOOD')).get()?.categoryId).toBe(mercado.id)
+  })
+
+  it('sem substituta: transações vão para revisão e regras são apagadas', async () => {
+    const { database, alimentacao } = await setup()
+    deleteCategory(database, alimentacao.id, null)
+    expect(byExternal(database, 't1').categoryId).toBeNull()
+    expect(database.select().from(rules).where(eq(rules.pattern, 'IFOOD')).get()).toBeUndefined()
+    expect(listReviewGroups(database).some((g) => g.descriptionNorm === 'IFOOD LANCHE')).toBe(true)
   })
 })
 

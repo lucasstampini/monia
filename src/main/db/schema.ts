@@ -18,7 +18,9 @@ export const categories = sqliteTable('categories', {
   id: integer('id').primaryKey({ autoIncrement: true }),
   name: text('name').notNull().unique(),
   parentId: integer('parent_id'),
-  color: text('color').notNull()
+  color: text('color').notNull(),
+  /** Movimentações que não são consumo (fatura, investimento, entre contas): ficam fora dos gráficos. */
+  excludedFromSpending: integer('excluded_from_spending', { mode: 'boolean' }).notNull().default(false)
 })
 
 export const imports = sqliteTable('imports', {

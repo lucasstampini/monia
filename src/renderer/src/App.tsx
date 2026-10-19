@@ -2,6 +2,7 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Sidebar, type Selection } from './components/Sidebar'
 import { errorMessage, useAsync } from './lib/useAsync'
+import { Categories } from './screens/Categories'
 import { Dashboard } from './screens/Dashboard'
 import { Review } from './screens/Review'
 import { Rules } from './screens/Rules'
@@ -141,7 +142,10 @@ export function App() {
             {selection.screen === 'review' && (
               <Review categories={categoryList} dataVersion={dataVersion} onDataChanged={bumpData} />
             )}
-            {selection.screen === 'rules' &&<Rules categories={categoryList} onDataChanged={bumpData} />}
+            {selection.screen === 'categories' && (
+              <Categories categories={categoryList} dataVersion={dataVersion} onDataChanged={bumpData} />
+            )}
+            {selection.screen === 'rules' && <Rules categories={categoryList} onDataChanged={bumpData} />}
             {selection.screen === 'settings' && settings.data && (
               <SettingsScreen settings={settings.data} onSaved={bumpData} />
             )}

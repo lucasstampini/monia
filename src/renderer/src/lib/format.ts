@@ -50,6 +50,12 @@ export function formatMonthLong(month: string): string {
   return `${monthNamesLong[Number(number) - 1]} de ${year}`
 }
 
+/** "2024-05" -> "Maio de 2024" (para títulos e cabeçalhos). */
+export function formatMonthTitle(month: string): string {
+  const long = formatMonthLong(month)
+  return long.charAt(0).toUpperCase() + long.slice(1)
+}
+
 export function formatDateTime(iso: string): string {
   return new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(iso))
 }

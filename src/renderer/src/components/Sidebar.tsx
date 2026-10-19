@@ -1,11 +1,11 @@
 import { motion } from 'framer-motion'
-import { CreditCard, Inbox, Landmark, LayoutDashboard, ListFilter, ListOrdered, RefreshCw, Settings } from 'lucide-react'
+import { CreditCard, Inbox, Landmark, LayoutDashboard, ListFilter, ListOrdered, RefreshCw, Settings, Tags } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import type { Account } from '@shared/types'
 import { formatDateTime } from '../lib/format'
 import { spring } from '../lib/motion'
 
-export type Screen = 'dashboard' | 'transactions' | 'review' | 'rules' | 'settings'
+export type Screen = 'dashboard' | 'transactions' | 'review' | 'categories' | 'rules' | 'settings'
 
 export interface Selection {
   screen: Screen
@@ -100,6 +100,7 @@ export function Sidebar({
           selected={is('review')}
           onClick={() => onSelect({ screen: 'review' })}
         />
+        <SidebarItem icon={Tags} label="Categorias" selected={is('categories')} onClick={() => onSelect({ screen: 'categories' })} />
         <SidebarItem icon={ListOrdered} label="Regras" selected={is('rules')} onClick={() => onSelect({ screen: 'rules' })} />
         <SidebarItem icon={Settings} label="Configurações" selected={is('settings')} onClick={() => onSelect({ screen: 'settings' })} />
       </div>

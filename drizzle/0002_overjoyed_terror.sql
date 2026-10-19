@@ -1,0 +1,1 @@
+ALTER TABLE `categories` ADD `excluded_from_spending` integer DEFAULT false NOT NULL;

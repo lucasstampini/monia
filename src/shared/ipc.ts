@@ -4,6 +4,8 @@ import type {
   Account,
   Appearance,
   Category,
+  CategoryInput,
+  CategoryUsage,
   DashboardData,
   MenuCommand,
   ReviewGroup,
@@ -21,6 +23,10 @@ export interface InvokeApi {
   getAppearance(): Promise<Appearance>
   listAccounts(): Promise<Account[]>
   listCategories(): Promise<Category[]>
+  listCategoryUsage(): Promise<CategoryUsage[]>
+  saveCategory(input: CategoryInput): Promise<Category>
+  /** `replacementId` null: transações ficam sem categoria e as regras da categoria são apagadas. */
+  deleteCategory(id: number, replacementId: number | null): Promise<void>
   listMonths(): Promise<string[]>
   listTransactions(filter: TransactionFilter): Promise<Transaction[]>
   updateTransactionCategory(transactionId: number, categoryId: number | null): Promise<{ affected: number }>
@@ -42,6 +48,9 @@ export const invokeChannels = [
   'getAppearance',
   'listAccounts',
   'listCategories',
+  'listCategoryUsage',
+  'saveCategory',
+  'deleteCategory',
   'listMonths',
   'listTransactions',
   'updateTransactionCategory',
