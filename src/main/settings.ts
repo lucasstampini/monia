@@ -1,6 +1,6 @@
 import { eq } from 'drizzle-orm'
 import type { AiProviderName, Settings, SettingsInput } from '@shared/types'
-import { DEFAULT_MODELS, type ProviderConfig } from './ai'
+import type { ProviderConfig } from './ai'
 import type { Db } from './db/client'
 import { settings } from './db/schema'
 import { getSecret, hasSecret, setSecret } from './secrets'
@@ -21,7 +21,8 @@ export function getSettings(db: Db): Settings {
     pluggyConfigured: hasSecret('pluggyClientId') && hasSecret('pluggyClientSecret'),
     pluggyItemIds: JSON.parse(read(db, 'pluggyItemIds') ?? '[]') as string[],
     aiProvider,
-    aiModel: read(db, 'aiModel') ?? (aiProvider === 'none' ? '' : DEFAULT_MODELS[aiProvider]),
+    // Vazio = padrão do provedor (resolvido em createProvider), para o padrão poder evoluir.
+    aiModel: read(db, 'aiModel') ?? '',
     ollamaUrl: read(db, 'ollamaUrl') ?? 'http://localhost:11434',
     geminiKeyConfigured: hasSecret('geminiApiKey'),
     lastSyncAt: read(db, 'lastSyncAt')

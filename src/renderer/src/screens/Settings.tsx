@@ -124,12 +124,12 @@ export function SettingsScreen({ settings, onSaved }: { settings: Settings; onSa
               </Select>
             </GroupedRow>
             {aiProvider !== 'none' && (
-              <GroupedRow label="Modelo">
+              <GroupedRow label="Modelo" detail="Deixe vazio para usar o padrão">
                 <TextField
                   className="w-64"
                   value={aiModel}
                   onChange={(e) => setAiModel(e.target.value)}
-                  placeholder={aiProvider === 'ollama' ? 'llama3.2' : 'gemini-2.5-flash'}
+                  placeholder={aiProvider === 'ollama' ? 'llama3.2' : 'gemini-flash-latest'}
                 />
               </GroupedRow>
             )}

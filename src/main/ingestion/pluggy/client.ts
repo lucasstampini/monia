@@ -90,14 +90,13 @@ export class PluggyClient {
   async getAllByCursor(path: string, params: Record<string, string>): Promise<unknown[]> {
     const results: unknown[] = []
     const seen = new Set<string>()
-    let after: string | null = null
+    let request: string | null = `${path}?${new URLSearchParams(params)}`
     for (let page = 0; page < MAX_CURSOR_PAGES; page++) {
-      const query = new URLSearchParams({ ...params, ...(after ? { after } : {}) })
-      const body = cursorPageSchema.parse(await this.get(`${path}?${query}`))
+      const body = cursorPageSchema.parse(await this.get(request))
       results.push(...body.results)
-      after = cursorFromNext(body.next)
-      if (!after || seen.has(after)) return results
-      seen.add(after)
+      request = nextPagePath(path, params, body.next)
+      if (!request || seen.has(request)) return results
+      seen.add(request)
     }
     log.warn('paginação por cursor atingiu o teto', { path, pages: MAX_CURSOR_PAGES })
     return results
@@ -107,13 +106,24 @@ export class PluggyClient {
 const MAX_CURSOR_PAGES = 1000
 
 /**
- * Extrai o cursor da próxima página. A Pluggy devolve `next` como URL com `?after=...`;
- * aceitamos também o cursor puro, por robustez.
+ * Monta o caminho da próxima página a partir do `next` da resposta.
+ * A Pluggy devolve `next` como query string relativa ("?accountId=...&after=...")
+ * e pede que seja concatenada ao endpoint: GET /v2/transactions{next}.
+ * Aceitamos também URL completa, caminho absoluto ou cursor puro, por robustez.
  */
-export function cursorFromNext(next: string | null | undefined): string | null {
+export function nextPagePath(
+  path: string,
+  params: Record<string, string>,
+  next: string | null | undefined
+): string | null {
   if (!next) return null
-  if (!/^https?:\/\//.test(next)) return next
-  return new URL(next).searchParams.get('after')
+  if (next.startsWith('?')) return `${path}${next}`
+  if (next.startsWith('/')) return next
+  if (/^https?:\/\//.test(next)) {
+    const url = new URL(next)
+    return `${url.pathname}${url.search}`
+  }
+  return `${path}?${new URLSearchParams({ ...params, after: next })}`
 }
 
 /** Valida uma lista item a item: itens inválidos viram erro registrado, não exceção. */

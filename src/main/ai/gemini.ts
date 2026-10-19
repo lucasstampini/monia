@@ -34,7 +34,11 @@ export class GeminiProvider implements LLMProvider {
       }),
       signal: AbortSignal.timeout(60_000)
     })
-    if (!response.ok) throw new Error(`HTTP ${response.status}`)
+    if (!response.ok) {
+      // O corpo explica o motivo (ex.: modelo inexistente). A chave vai no header, não aparece aqui.
+      const detail = (await response.text().catch(() => '')).replace(/\s+/g, ' ').slice(0, 200)
+      throw new Error(`HTTP ${response.status} (modelo "${this.model}"): ${detail}`)
+    }
     const body = responseSchema.parse(await response.json())
     const text = body.candidates[0]!.content.parts.map((p) => p.text).join('')
     return parseCategorization(text, new Set(categories.map((c) => c.id)))

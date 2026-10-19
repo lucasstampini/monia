@@ -6,7 +6,8 @@ import type { LLMProvider } from './provider'
 
 export const DEFAULT_MODELS: Record<Exclude<AiProviderName, 'none'>, string> = {
   ollama: 'llama3.2',
-  gemini: 'gemini-2.5-flash'
+  // Alias mantido pelo Google apontando para o Flash estável atual: não quebra quando um modelo é aposentado.
+  gemini: 'gemini-flash-latest'
 }
 
 export interface ProviderConfig {
