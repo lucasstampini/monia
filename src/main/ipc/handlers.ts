@@ -1,0 +1,81 @@
+import { ipcMain, type BrowserWindow } from 'electron'
+import { z } from 'zod'
+import { eventChannels, type InvokeApi } from '@shared/ipc'
+import { createProvider } from '../ai'
+import type { Db } from '../db/client'
+import * as queries from '../db/queries'
+import { PluggyAdapter } from '../ingestion/pluggy/adapter'
+import { runImport } from '../pipeline/run'
+import { getPluggyCredentials, getProviderConfig, getSettings, saveSettings, writeSetting } from '../settings'
+
+// Tudo que vem do renderer é tratado como entrada externa e validado com Zod.
+const id = z.number().int().positive()
+const filterSchema = z.object({
+  search: z.string().max(200).optional(),
+  accountId: id.optional(),
+  categoryId: id.nullable().optional(),
+  month: z.string().regex(/^\d{4}-\d{2}$/).optional()
+})
+const ruleSchema = z.object({
+  id: id.optional(),
+  pattern: z.string().trim().min(1).max(200),
+  matchType: z.enum(['contains', 'regex', 'exact']),
+  categoryId: id,
+  priority: z.number().int().min(-1000).max(1000)
+})
+const settingsSchema = z.object({
+  pluggyClientId: z.string().max(200).optional(),
+  pluggyClientSecret: z.string().max(500).optional(),
+  pluggyItemIds: z.array(z.string().max(100)).max(50).optional(),
+  aiProvider: z.enum(['none', 'ollama', 'gemini']).optional(),
+  aiModel: z.string().max(100).optional(),
+  ollamaUrl: z.url({ protocol: /^https?$/ }).optional(),
+  geminiApiKey: z.string().max(500).optional()
+})
+
+type Handlers = { [K in keyof InvokeApi]: (...args: unknown[]) => ReturnType<InvokeApi[K]> | Awaited<ReturnType<InvokeApi[K]>> }
+
+export function registerIpcHandlers(db: Db, getWindow: () => BrowserWindow | null, getAccent: () => string): void {
+  let syncing = false
+
+  const handlers: Handlers = {
+    getAppearance: () => ({ accent: getAccent(), platform: process.platform }),
+    listAccounts: () => queries.listAccounts(db),
+    listCategories: () => queries.listCategories(db),
+    listMonths: () => queries.listMonths(db),
+    listTransactions: (filter) => queries.listTransactions(db, filterSchema.parse(filter ?? {})),
+    updateTransactionCategory: (transactionId, categoryId) => ({
+      affected: queries.updateTransactionCategory(db, id.parse(transactionId), id.nullable().parse(categoryId))
+    }),
+    listRules: () => queries.listRules(db),
+    saveRule: (rule) => queries.saveRule(db, ruleSchema.parse(rule)),
+    deleteRule: (ruleId) => queries.deleteRule(db, id.parse(ruleId)),
+    getDashboard: (monthCount) => queries.getDashboard(db, z.number().int().min(1).max(36).parse(monthCount)),
+    getSettings: () => getSettings(db),
+    saveSettings: (input) => saveSettings(db, settingsSchema.parse(input)),
+    sync: async () => {
+      if (syncing) throw new Error('Já existe uma sincronização em andamento.')
+      const credentials = getPluggyCredentials()
+      const { pluggyItemIds } = getSettings(db)
+      if (!credentials || pluggyItemIds.length === 0) {
+        throw new Error('Configure as credenciais da Pluggy e ao menos uma conexão em Configurações.')
+      }
+      syncing = true
+      try {
+        const adapter = new PluggyAdapter({ credentials, itemIds: pluggyItemIds })
+        const provider = createProvider(getProviderConfig(db))
+        const result = await runImport(db, adapter, provider, (step) =>
+          getWindow()?.webContents.send(eventChannels.onSyncProgress, { step })
+        )
+        writeSetting(db, 'lastSyncAt', new Date().toISOString())
+        return result
+      } finally {
+        syncing = false
+      }
+    }
+  }
+
+  for (const [channel, handler] of Object.entries(handlers)) {
+    ipcMain.handle(channel, (_event, ...args: unknown[]) => handler(...args))
+  }
+}
