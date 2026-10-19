@@ -17,6 +17,8 @@ export interface RawTransaction {
   installmentTotal: number | null
   /** Mês da fatura (YYYY-MM), quando a fonte souber. Não confundir com `date`. */
   statementMonth: string | null
+  /** Categoria que a própria fonte atribuiu, se houver (texto livre da fonte). */
+  sourceCategory: string | null
 }
 
 export interface RawAccount {

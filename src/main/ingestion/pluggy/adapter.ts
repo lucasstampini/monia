@@ -77,7 +77,8 @@ export function mapTransaction(
     amountCents,
     installmentCurrent: tx.creditCardMetadata?.installmentNumber ?? null,
     installmentTotal: tx.creditCardMetadata?.totalInstallments ?? null,
-    statementMonth
+    statementMonth,
+    sourceCategory: tx.category ?? null
   }
 }
 

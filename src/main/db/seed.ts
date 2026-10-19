@@ -1,7 +1,10 @@
-import { count, eq } from 'drizzle-orm'
+import { and, count, eq } from 'drizzle-orm'
 import type { MatchType } from '@shared/types'
 import type { Db } from './client'
-import { categories, rules } from './schema'
+import { categories, rules, settings } from './schema'
+
+/** Versão atual dos dados iniciais. Incrementar ao adicionar um bloco novo em `seed`. */
+const SEED_VERSION = 2
 
 /** Categorias que não são consumo: ficam fora dos gráficos de gasto para não contar em dobro. */
 export const NON_SPENDING_CATEGORIES = ['Pagamento de fatura', 'Transferência entre contas', 'Investimentos']
@@ -26,7 +29,14 @@ const DEFAULT_CATEGORIES: { name: string; color: string }[] = [
   { name: 'Investimentos', color: '#32ADE6' }
 ]
 
-const DEFAULT_RULES: { pattern: string; matchType: MatchType; category: string }[] = [
+interface DefaultRule {
+  pattern: string
+  matchType: MatchType
+  category: string
+}
+
+/** v1: primeira execução. A ordem define a prioridade (primeiro = maior). */
+const DEFAULT_RULES: DefaultRule[] = [
   { pattern: 'IFOOD', matchType: 'contains', category: 'Alimentação' },
   { pattern: 'UBER EATS', matchType: 'contains', category: 'Alimentação' },
   { pattern: 'UBER', matchType: 'contains', category: 'Transporte' },
@@ -42,26 +52,99 @@ const DEFAULT_RULES: { pattern: string; matchType: MatchType; category: string }
   { pattern: 'PAG FATURA', matchType: 'contains', category: 'Pagamento de fatura' }
 ]
 
-/** Popula categorias e regras padrão só na primeira execução. */
-export function seed(db: Db): void {
+/**
+ * v2: regras vindas do uso real (descrições como aparecem no extrato/fatura do Nubank).
+ * Só nomes de empresas; nunca nomes de pessoas. Prioridades acima das da v1,
+ * com os casos específicos primeiro (ex.: "99FOOD" antes de "99", "AMAZON PRIME" antes de "AMAZON").
+ */
+const RULES_V2: DefaultRule[] = [
+  // Assinaturas (antes de Compras, por causa de "AMAZON PRIME")
+  ...['AMAZON PRIME', 'PRIME VIDEO', 'ANTHROPIC', 'CLAUDE.AI', 'OPENAI', 'CHATGPT', 'OBSIDIAN', 'ADOBE', 'CANVA',
+    'GOOGLE ONE', 'YOUTUBE', 'DISNEY', 'HBO', 'APPLE.COM', 'ICLOUD', 'DEEZER', 'GITHUB'].map(
+    (pattern): DefaultRule => ({ pattern, matchType: 'contains', category: 'Assinaturas' })
+  ),
+  // 99 aparece como "99", "99 POP", "PIX 99 TECNOLOGIA LTDA", "ESTORNO DE 99" e "99FOOD"
+  { pattern: '99FOOD', matchType: 'contains', category: 'Alimentação' },
+  { pattern: '^99( |$)', matchType: 'regex', category: 'Transporte' },
+  { pattern: '99 TECNOLOGIA', matchType: 'contains', category: 'Transporte' },
+  { pattern: 'ESTORNO DE 99', matchType: 'contains', category: 'Transporte' },
+  // Transporte público e mobilidade em SP
+  ...['AUTOPASS', 'TOP SP', 'CPTM', 'SPTRANS', 'TEMBICI', 'SEM PARAR', 'ESTAPAR'].map(
+    (pattern): DefaultRule => ({ pattern, matchType: 'contains', category: 'Transporte' })
+  ),
+  { pattern: '\\bMETRO\\b', matchType: 'regex', category: 'Transporte' },
+  // Investimentos e cashback
+  { pattern: '^(APLICACAO|RESGATE) (EM )?(RDB|CDB|LCI|LCA|TESOURO|POUPANCA)', matchType: 'regex', category: 'Investimentos' },
+  { pattern: 'RECEBIDO DE INVESTIMENTOS', matchType: 'contains', category: 'Investimentos' },
+  { pattern: 'CASHBACK', matchType: 'contains', category: 'Renda' },
+  // IOF (compra internacional e devolução)
+  { pattern: '^IOF\\b', matchType: 'regex', category: 'Impostos e taxas' },
+  // Compras online
+  ...['AMAZON', 'MERCADOLIVRE', 'MERCADO LIVRE', 'AMERICANAS', 'SHOPEE', 'ALIEXPRESS', 'MAGALU', 'SHEIN'].map(
+    (pattern): DefaultRule => ({ pattern, matchType: 'contains', category: 'Compras' })
+  ),
+  // Saúde, moradia, mercado e alimentação
+  ...['PHARMA', 'RAIA', 'PAGUE MENOS'].map((pattern): DefaultRule => ({ pattern, matchType: 'contains', category: 'Saúde' })),
+  ...['SABESP', 'BRK AMBIENTAL', 'ENEL', 'CPFL', 'COMGAS'].map(
+    (pattern): DefaultRule => ({ pattern, matchType: 'contains', category: 'Moradia' })
+  ),
+  ...['ASSAI', 'CARREFOUR', 'ATACADAO', 'PAO DE ACUCAR', 'VAREJAO'].map(
+    (pattern): DefaultRule => ({ pattern, matchType: 'contains', category: 'Mercado' })
+  ),
+  ...['RESTAURANTE', 'LANCHONETE', 'PADARIA', 'BURGER', 'MCDONALDS', 'STARBUCKS'].map(
+    (pattern): DefaultRule => ({ pattern, matchType: 'contains', category: 'Alimentação' })
+  )
+]
+
+type Tx = Parameters<Parameters<Db['transaction']>[0]>[0]
+
+/** Insere regras padrão; a primeira da lista recebe `basePriority + tamanho` e as seguintes vão diminuindo. */
+function insertRules(tx: Tx, list: DefaultRule[], basePriority: number): void {
+  for (const [index, rule] of list.entries()) {
+    const category = tx.select().from(categories).where(eq(categories.name, rule.category)).get()
+    if (!category) continue
+    const exists = tx
+      .select()
+      .from(rules)
+      .where(and(eq(rules.pattern, rule.pattern), eq(rules.matchType, rule.matchType)))
+      .get()
+    if (exists) continue
+    tx.insert(rules)
+      .values({
+        pattern: rule.pattern,
+        matchType: rule.matchType,
+        categoryId: category.id,
+        priority: basePriority + list.length - index,
+        origin: 'manual'
+      })
+      .run()
+  }
+}
+
+/**
+ * Dados iniciais versionados. Cada versão roda uma única vez por banco,
+ * então regras padrão novas chegam a quem já usa o app, e uma regra
+ * que você apagou não volta na próxima abertura.
+ * Retorna true quando algo novo foi aplicado (as transações precisam ser recategorizadas).
+ */
+export function seed(db: Db): boolean {
+  const stored = db.select().from(settings).where(eq(settings.key, 'seedVersion')).get()?.value
   const [{ total } = { total: 0 }] = db.select({ total: count() }).from(categories).all()
-  if (total > 0) return
+  // Bancos criados antes do versionamento já têm a v1.
+  const current = stored ? Number(stored) : total > 0 ? 1 : 0
 
   db.transaction((tx) => {
-    tx.insert(categories).values(DEFAULT_CATEGORIES).run()
-    for (const [index, rule] of DEFAULT_RULES.entries()) {
-      const category = tx.select().from(categories).where(eq(categories.name, rule.category)).get()
-      if (!category) continue
-      tx.insert(rules)
-        .values({
-          pattern: rule.pattern,
-          matchType: rule.matchType,
-          categoryId: category.id,
-          // Padrões mais específicos (listados antes) vencem.
-          priority: DEFAULT_RULES.length - index,
-          origin: 'manual'
-        })
+    if (current < 1) {
+      tx.insert(categories).values(DEFAULT_CATEGORIES).run()
+      insertRules(tx, DEFAULT_RULES, 0)
+    }
+    if (current < 2) insertRules(tx, RULES_V2, 20)
+    if (current < SEED_VERSION) {
+      tx.insert(settings)
+        .values({ key: 'seedVersion', value: String(SEED_VERSION) })
+        .onConflictDoUpdate({ target: settings.key, set: { value: String(SEED_VERSION) } })
         .run()
     }
   })
+  return current < SEED_VERSION
 }

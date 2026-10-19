@@ -72,6 +72,34 @@ describe('categorize', () => {
     expect(output.errors[0]).toContain('offline')
   })
 
+  it('usa a categoria da fonte antes da IA, mas regra vence', async () => {
+    const { provider, calls } = fakeProvider(() => 1)
+    const output = await categorize(
+      [
+        { ...item('99 TECNOLOGIA'), sourceCategory: 'Taxi and ride-hailing' },
+        { ...item('UBER TRIP'), sourceCategory: 'Food delivery' }
+      ],
+      { rules, categories, aiCache: new Map(), provider }
+    )
+    expect(output.results).toEqual([
+      { categoryId: 2, source: 'source' },
+      { categoryId: 2, source: 'rule' }
+    ])
+    expect(calls).toHaveLength(0)
+  })
+
+  it('Pix para terceiros não é traduzido e segue para a IA', async () => {
+    const { calls, provider } = fakeProvider(() => null)
+    const output = await categorize([{ ...item('PIX FULANO'), sourceCategory: 'Transfer - PIX' }], {
+      rules,
+      categories,
+      aiCache: new Map(),
+      provider
+    })
+    expect(calls).toHaveLength(1)
+    expect(output.results[0]).toEqual({ categoryId: null, source: null })
+  })
+
   it('sem provedor, o que as regras não resolvem fica sem categoria', async () => {
     const output = await categorize([item('LOJA')], { rules, categories, aiCache: new Map(), provider: null })
     expect(output.results[0]).toEqual({ categoryId: null, source: null })

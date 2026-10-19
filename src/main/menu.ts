@@ -60,7 +60,8 @@ export function buildMenu(getWindow: () => BrowserWindow | null): void {
       submenu: [
         { label: 'Painel', accelerator: 'CmdOrCtrl+1', click: send('navigate-dashboard') },
         { label: 'Transações', accelerator: 'CmdOrCtrl+2', click: send('navigate-transactions') },
-        { label: 'Regras', accelerator: 'CmdOrCtrl+3', click: send('navigate-rules') },
+        { label: 'Revisar', accelerator: 'CmdOrCtrl+3', click: send('navigate-review') },
+        { label: 'Regras', accelerator: 'CmdOrCtrl+4', click: send('navigate-rules') },
         { type: 'separator' },
         { role: 'reload', label: 'Recarregar' },
         { role: 'toggleDevTools', label: 'Ferramentas de desenvolvedor' },

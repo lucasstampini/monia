@@ -1,31 +1,53 @@
 // Teste de integração com SQLite real (em memória).
 // Roda com `npm run test:db`: o better-sqlite3 é compilado para o Node do Electron.
 import { describe, expect, it } from 'vitest'
+import Database from 'better-sqlite3'
+import { drizzle } from 'drizzle-orm/better-sqlite3'
+import { migrate } from 'drizzle-orm/better-sqlite3/migrator'
 import { count, eq } from 'drizzle-orm'
 import type { LLMProvider } from '../ai/provider'
 import { openDatabase } from '../db/client'
-import { listRules, updateTransactionCategory } from '../db/queries'
-import { categories, rules, transactions } from '../db/schema'
-import type { SourceAdapter, SourceBatch } from '../ingestion/types'
+import { categorizeGroup, deleteRule, listReviewGroups, listRules, updateTransactionCategory } from '../db/queries'
+import * as schema from '../db/schema'
+import { categories, rules, settings, transactions } from '../db/schema'
+import { seed } from '../db/seed'
+import type { RawTransaction, SourceAdapter, SourceBatch } from '../ingestion/types'
 import { runImport } from './run'
 
 function fakeAdapter(batch: Omit<SourceBatch, 'source' | 'errors'>): SourceAdapter {
   return { source: 'fake', fetch: async () => ({ source: 'fake', errors: [], ...structuredClone(batch) }) }
 }
 
+function tx(externalId: string, description: string, amountCents: number, extra: Partial<RawTransaction> = {}): RawTransaction {
+  return {
+    externalId,
+    accountExternalId: 'card',
+    date: '2024-05-01',
+    description,
+    amountCents,
+    installmentCurrent: null,
+    installmentTotal: null,
+    statementMonth: '2024-06',
+    sourceCategory: null,
+    ...extra
+  }
+}
+
 const batch = {
   accounts: [{ externalId: 'card', institution: 'Banco', name: 'Cartão', type: 'credit' as const, sourceItemId: null }],
   statements: [],
   transactions: [
-    { externalId: 't1', accountExternalId: 'card', date: '2024-05-01', description: 'IFOOD *LANCHE', amountCents: -3000, installmentCurrent: null, installmentTotal: null, statementMonth: '2024-06' },
-    { externalId: 't2', accountExternalId: 'card', date: '2024-05-02', description: 'LOJA X PARC 02/05', amountCents: -10000, installmentCurrent: null, installmentTotal: null, statementMonth: '2024-06' },
-    { externalId: 't3', accountExternalId: 'card', date: '2024-05-03', description: 'PADARIA', amountCents: -800, installmentCurrent: null, installmentTotal: null, statementMonth: '2024-06' },
-    { externalId: 't4', accountExternalId: 'card', date: '2024-05-04', description: 'PADARIA', amountCents: -800, installmentCurrent: null, installmentTotal: null, statementMonth: '2024-06' }
+    tx('t1', 'IFOOD *LANCHE', -3000),
+    tx('t2', 'LOJA X PARC 02/05', -10000),
+    tx('t3', 'CAFE DO PONTO', -800, { date: '2024-05-03' }),
+    tx('t4', 'CAFE DO PONTO', -800, { date: '2024-05-04' })
   ]
 }
 
 const db = () => openDatabase(':memory:', 'drizzle')
 const total = (database: ReturnType<typeof db>) => database.select({ n: count() }).from(transactions).get()!.n
+const byExternal = (database: ReturnType<typeof db>, id: string) =>
+  database.select().from(transactions).where(eq(transactions.externalId, id)).get()!
 
 describe('runImport', () => {
   it('é idempotente: importar duas vezes não duplica', async () => {
@@ -41,10 +63,29 @@ describe('runImport', () => {
   it('normaliza, detecta parcela e aplica regras padrão', async () => {
     const database = db()
     await runImport(database, fakeAdapter(batch), null)
-    const loja = database.select().from(transactions).where(eq(transactions.externalId, 't2')).get()!
-    expect(loja).toMatchObject({ descriptionNorm: 'LOJA X', installmentCurrent: 2, installmentTotal: 5 })
-    const ifood = database.select().from(transactions).where(eq(transactions.externalId, 't1')).get()!
-    expect(ifood.categorySource).toBe('rule')
+    expect(byExternal(database, 't2')).toMatchObject({ descriptionNorm: 'LOJA X', installmentCurrent: 2, installmentTotal: 5 })
+    expect(byExternal(database, 't1').categorySource).toBe('rule')
+  })
+
+  it('usa a categoria da Pluggy quando nenhuma regra casa; Pix para terceiros fica para revisão', async () => {
+    const database = db()
+    await runImport(
+      database,
+      fakeAdapter({
+        ...batch,
+        transactions: [
+          tx('p1', 'CORRIDA XPTO', -2000, { sourceCategory: 'Taxi and ride-hailing' }),
+          tx('p2', 'TRANSFERENCIA ENVIADA PELO PIX FULANO', -5000, { sourceCategory: 'Transfer - PIX' }),
+          tx('p3', 'TRANSFERENCIA RECEBIDA EU MESMO', 9000, { sourceCategory: 'Same person transfer - PIX' })
+        ]
+      }),
+      null
+    )
+    const transporte = database.select().from(categories).where(eq(categories.name, 'Transporte')).get()!
+    expect(byExternal(database, 'p1')).toMatchObject({ categoryId: transporte.id, categorySource: 'source' })
+    expect(byExternal(database, 'p2').categoryId).toBeNull()
+    expect(byExternal(database, 'p3').categorySource).toBe('source')
+    expect(listReviewGroups(database).map((g) => g.descriptionNorm)).toEqual(['TRANSFERENCIA ENVIADA PELO PIX FULANO'])
   })
 
   it('IA só vê o que as regras não resolveram, uma vez por descrição', async () => {
@@ -59,7 +100,7 @@ describe('runImport', () => {
       }
     }
     await runImport(database, fakeAdapter(batch), provider)
-    expect(seen.sort()).toEqual(['LOJA X', 'PADARIA'])
+    expect(seen.sort()).toEqual(['CAFE DO PONTO', 'LOJA X'])
     // Segunda vez: tudo já categorizado, IA não é chamada.
     seen.length = 0
     await runImport(database, fakeAdapter(batch), provider)
@@ -70,13 +111,45 @@ describe('runImport', () => {
     const database = db()
     await runImport(database, fakeAdapter(batch), null)
     const mercado = database.select().from(categories).where(eq(categories.name, 'Mercado')).get()!
-    const padaria = database.select().from(transactions).where(eq(transactions.externalId, 't3')).get()!
-    const affected = updateTransactionCategory(database, padaria.id, mercado.id)
+    const affected = updateTransactionCategory(database, byExternal(database, 't3').id, mercado.id)
     expect(affected).toBe(2)
     const learned = listRules(database).find((r) => r.origin === 'correction')
-    expect(learned).toMatchObject({ pattern: 'PADARIA', matchType: 'exact', categoryId: mercado.id })
-    const other = database.select().from(transactions).where(eq(transactions.externalId, 't4')).get()!
-    expect(other).toMatchObject({ categoryId: mercado.id, categorySource: 'rule' })
+    expect(learned).toMatchObject({ pattern: 'CAFE DO PONTO', matchType: 'exact', categoryId: mercado.id })
+    expect(byExternal(database, 't4')).toMatchObject({ categoryId: mercado.id, categorySource: 'rule' })
     expect(database.select({ n: count() }).from(rules).where(eq(rules.origin, 'correction')).get()!.n).toBe(1)
+  })
+
+  it('revisão em grupo categoriza todas as iguais e tira o grupo da fila', async () => {
+    const database = db()
+    await runImport(database, fakeAdapter(batch), null)
+    expect(listReviewGroups(database).find((g) => g.descriptionNorm === 'CAFE DO PONTO')).toMatchObject({
+      count: 2,
+      totalCents: -1600
+    })
+    const alimentacao = database.select().from(categories).where(eq(categories.name, 'Alimentação')).get()!
+    categorizeGroup(database, 'CAFE DO PONTO', alimentacao.id)
+    expect(listReviewGroups(database).some((g) => g.descriptionNorm === 'CAFE DO PONTO')).toBe(false)
+    expect(byExternal(database, 't4').categoryId).toBe(alimentacao.id)
+  })
+})
+
+describe('seed versionado', () => {
+  it('banco antigo (v1) ganha as regras da v2 uma única vez', () => {
+    const sqlite = new Database(':memory:')
+    const raw = drizzle(sqlite, { schema })
+    migrate(raw, { migrationsFolder: 'drizzle' })
+    // Simula banco da v1: categorias existem, sem seedVersion.
+    seed(raw)
+    raw.delete(settings).run()
+    raw.delete(rules).where(eq(rules.pattern, '99FOOD')).run()
+
+    expect(seed(raw)).toBe(true)
+    expect(raw.select().from(rules).where(eq(rules.pattern, '99FOOD')).get()).toBeDefined()
+
+    // Regra apagada pelo usuário não volta.
+    const rule = raw.select().from(rules).where(eq(rules.pattern, '99FOOD')).get()!
+    deleteRule(raw, rule.id)
+    expect(seed(raw)).toBe(false)
+    expect(raw.select().from(rules).where(eq(rules.pattern, '99FOOD')).get()).toBeUndefined()
   })
 })

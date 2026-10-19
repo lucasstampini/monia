@@ -45,8 +45,10 @@ export const transactions = sqliteTable(
     installmentCurrent: integer('installment_current'),
     installmentTotal: integer('installment_total'),
     statementMonth: text('statement_month'),
+    /** Categoria crua informada pela fonte (ex.: "Taxi and ride-hailing" da Pluggy). */
+    sourceCategory: text('source_category'),
     categoryId: integer('category_id').references(() => categories.id),
-    categorySource: text('category_source', { enum: ['rule', 'ai', 'manual'] }),
+    categorySource: text('category_source', { enum: ['rule', 'source', 'ai', 'manual'] }),
     dedupHash: text('dedup_hash').notNull().unique(),
     importId: integer('import_id').references(() => imports.id)
   },

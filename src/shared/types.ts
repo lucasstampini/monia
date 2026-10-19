@@ -2,7 +2,8 @@
 // Dinheiro sempre em centavos inteiros; datas em ISO YYYY-MM-DD; meses em YYYY-MM.
 
 export type AccountType = 'credit' | 'checking'
-export type CategorySource = 'rule' | 'ai' | 'manual'
+/** `source` = categoria informada pela própria fonte (Pluggy), traduzida para as nossas. */
+export type CategorySource = 'rule' | 'source' | 'ai' | 'manual'
 export type MatchType = 'contains' | 'regex' | 'exact'
 export type RuleOrigin = 'manual' | 'correction'
 export type AiProviderName = 'none' | 'ollama' | 'gemini'
@@ -43,6 +44,17 @@ export interface TransactionFilter {
   categoryId?: number | null
   /** Mês de competência (fatura para cartão, data para conta). */
   month?: string
+}
+
+/** Transações sem categoria agrupadas pela descrição normalizada, para revisão manual. */
+export interface ReviewGroup {
+  descriptionNorm: string
+  /** Uma descrição original de exemplo, como aparece no extrato. */
+  sampleDescription: string
+  count: number
+  totalCents: number
+  lastDate: string
+  accountNames: string
 }
 
 export interface Rule {
@@ -125,4 +137,11 @@ export interface Appearance {
   platform: string
 }
 
-export type MenuCommand = 'search' | 'sync' | 'settings' | 'navigate-dashboard' | 'navigate-transactions' | 'navigate-rules'
+export type MenuCommand =
+  | 'search'
+  | 'sync'
+  | 'settings'
+  | 'navigate-dashboard'
+  | 'navigate-transactions'
+  | 'navigate-review'
+  | 'navigate-rules'

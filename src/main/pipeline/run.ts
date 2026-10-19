@@ -145,7 +145,8 @@ function saveTransactions(
         amountCents: item.amountCents,
         installmentCurrent: item.installment?.current ?? null,
         installmentTotal: item.installment?.total ?? null,
-        statementMonth: item.statementMonth
+        statementMonth: item.statementMonth,
+        sourceCategory: item.sourceCategory
       }
       try {
         // Já existe (mesmo id externo)? Atualiza os dados da fonte e preserva a categoria.
@@ -199,7 +200,8 @@ export async function categorizePending(
       id: transactions.id,
       descriptionNorm: transactions.descriptionNorm,
       amountCents: transactions.amountCents,
-      date: transactions.date
+      date: transactions.date,
+      sourceCategory: transactions.sourceCategory
     })
     .from(transactions)
     .where(isNull(transactions.categoryId))
@@ -235,7 +237,7 @@ export async function categorizePending(
   })
 
   return {
-    byRule: output.results.filter((r) => r.source === 'rule').length,
+    byRule: output.results.filter((r) => r.source === 'rule' || r.source === 'source').length,
     byAi: output.results.filter((r) => r.source === 'ai').length,
     errors: output.errors
   }

@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from 'framer-motion'
-import { ChevronDown, ChevronUp, Inbox, PanelRight, Search, SlidersHorizontal, Sparkles, Wand2, X } from 'lucide-react'
+import { ChevronDown, ChevronUp, Inbox, Landmark, PanelRight, Search, SlidersHorizontal, Sparkles, Wand2, X } from 'lucide-react'
 import { useEffect, useMemo, useState, type RefObject } from 'react'
 import type { Account, Category, Transaction, TransactionFilter } from '@shared/types'
 import { CategoryLabel } from '../components/CategoryLabel'
@@ -42,6 +42,8 @@ function sourceLabel(source: Transaction['categorySource']) {
   switch (source) {
     case 'rule':
       return { icon: Wand2, text: 'Regra' }
+    case 'source':
+      return { icon: Landmark, text: 'Categoria da Pluggy' }
     case 'ai':
       return { icon: Sparkles, text: 'IA' }
     case 'manual':

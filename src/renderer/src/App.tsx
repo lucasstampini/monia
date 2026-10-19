@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { Sidebar, type Selection } from './components/Sidebar'
 import { errorMessage, useAsync } from './lib/useAsync'
 import { Dashboard } from './screens/Dashboard'
+import { Review } from './screens/Review'
 import { Rules } from './screens/Rules'
 import { SettingsScreen } from './screens/Settings'
 import { SyncSheet, type SyncState } from './screens/SyncSheet'
@@ -23,6 +24,7 @@ export function App() {
   const accounts = useAsync(() => window.api.listAccounts(), [dataVersion])
   const categories = useAsync(() => window.api.listCategories(), [dataVersion])
   const settings = useAsync(() => window.api.getSettings(), [dataVersion])
+  const reviewGroups = useAsync(() => window.api.listReviewGroups(), [dataVersion])
   const bumpData = useCallback(() => setDataVersion((v) => v + 1), [])
 
   // Aparência: plataforma (para o material da janela) e cor de destaque do sistema.
@@ -80,6 +82,9 @@ export function App() {
           case 'navigate-transactions':
             setSelection({ screen: 'transactions' })
             break
+          case 'navigate-review':
+            setSelection({ screen: 'review' })
+            break
           case 'navigate-rules':
             setSelection({ screen: 'rules' })
             break
@@ -101,6 +106,7 @@ export function App() {
         lastSyncAt={settings.data?.lastSyncAt ?? null}
         syncing={syncState.status === 'running'}
         onSync={openSync}
+        reviewCount={reviewGroups.data?.length ?? 0}
       />
 
       <main className="relative flex min-w-0 flex-1 flex-col bg-content-bg">
@@ -132,7 +138,10 @@ export function App() {
                 onSync={openSync}
               />
             )}
-            {selection.screen === 'rules' && <Rules categories={categoryList} onDataChanged={bumpData} />}
+            {selection.screen === 'review' && (
+              <Review categories={categoryList} dataVersion={dataVersion} onDataChanged={bumpData} />
+            )}
+            {selection.screen === 'rules' &&<Rules categories={categoryList} onDataChanged={bumpData} />}
             {selection.screen === 'settings' && settings.data && (
               <SettingsScreen settings={settings.data} onSaved={bumpData} />
             )}

@@ -48,7 +48,8 @@ describe('mapTransaction', () => {
       amountCents: -9990,
       installmentCurrent: 2,
       installmentTotal: 5,
-      statementMonth: '2024-06'
+      statementMonth: '2024-06',
+      sourceCategory: 'Shopping'
     })
   })
 

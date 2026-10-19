@@ -1,0 +1,1 @@
+ALTER TABLE `transactions` ADD `source_category` text;

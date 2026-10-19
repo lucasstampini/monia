@@ -2,11 +2,14 @@ import type { Category, CategorySource, Rule } from '@shared/types'
 import { anonymize } from '../ai/anonymize'
 import type { LLMProvider } from '../ai/provider'
 import { findMatchingRule } from './rules'
+import { mapSourceCategory } from './sourceCategory'
 
 export interface CategorizeItem {
   descriptionNorm: string
   amountCents: number
   date: string
+  /** Categoria crua da fonte (Pluggy), se houver. */
+  sourceCategory?: string | null
 }
 
 export interface CategoryResult {
@@ -36,8 +39,31 @@ export interface CategorizeOutput {
 const UNCATEGORIZED: CategoryResult = { categoryId: null, source: null }
 
 /**
- * Categoriza em camadas: regras -> cache da IA -> IA -> "Sem categoria".
- * A IA só vê o que as regras não resolveram, e cada descrição é enviada uma única vez.
+ * Camadas que não chamam a IA: regras -> categoria da fonte -> cache da IA.
+ * Retorna `undefined` quando nenhuma camada sabe (candidato à IA);
+ * `UNCATEGORIZED` quando a IA já respondeu "não sei" antes.
+ */
+export function resolveWithoutAi(
+  item: CategorizeItem,
+  context: Pick<CategorizeContext, 'rules' | 'categories' | 'aiCache'>
+): CategoryResult | undefined {
+  const rule = findMatchingRule(context.rules, item.descriptionNorm)
+  if (rule) return { categoryId: rule.categoryId, source: 'rule' }
+
+  const sourceName = mapSourceCategory(item.sourceCategory)
+  const fromSource = sourceName ? context.categories.find((c) => c.name === sourceName) : undefined
+  if (fromSource) return { categoryId: fromSource.id, source: 'source' }
+
+  if (context.aiCache.has(item.descriptionNorm)) {
+    const cached = context.aiCache.get(item.descriptionNorm) ?? null
+    return cached === null ? UNCATEGORIZED : { categoryId: cached, source: 'ai' }
+  }
+  return undefined
+}
+
+/**
+ * Categoriza em camadas: regras -> categoria da fonte -> cache da IA -> IA -> "Sem categoria".
+ * A IA só vê o que as camadas anteriores não resolveram, e cada descrição é enviada uma única vez.
  */
 export async function categorize(items: CategorizeItem[], context: CategorizeContext): Promise<CategorizeOutput> {
   const results: CategoryResult[] = items.map(() => UNCATEGORIZED)
@@ -46,14 +72,9 @@ export async function categorize(items: CategorizeItem[], context: CategorizeCon
   const pendingByDescription = new Map<string, number[]>()
 
   items.forEach((item, index) => {
-    const rule = findMatchingRule(context.rules, item.descriptionNorm)
-    if (rule) {
-      results[index] = { categoryId: rule.categoryId, source: 'rule' }
-      return
-    }
-    if (context.aiCache.has(item.descriptionNorm)) {
-      const cached = context.aiCache.get(item.descriptionNorm) ?? null
-      results[index] = cached === null ? UNCATEGORIZED : { categoryId: cached, source: 'ai' }
+    const resolved = resolveWithoutAi(item, context)
+    if (resolved) {
+      results[index] = resolved
       return
     }
     const indexes = pendingByDescription.get(item.descriptionNorm) ?? []

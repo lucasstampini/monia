@@ -2,6 +2,7 @@ import Database from 'better-sqlite3'
 import { drizzle, type BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
 import { migrate } from 'drizzle-orm/better-sqlite3/migrator'
 import * as schema from './schema'
+import { reapplyRules } from './queries'
 import { seed } from './seed'
 
 export type Db = BetterSQLite3Database<typeof schema>
@@ -13,6 +14,7 @@ export function openDatabase(filePath: string, migrationsFolder: string): Db {
   sqlite.pragma('foreign_keys = ON')
   const db = drizzle(sqlite, { schema })
   migrate(db, { migrationsFolder })
-  seed(db)
+  // Regras padrão novas valem também para o histórico já importado.
+  if (seed(db)) reapplyRules(db)
   return db
 }

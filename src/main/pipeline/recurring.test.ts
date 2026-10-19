@@ -11,9 +11,15 @@ const netflix = (date: string, amountCents = -5590) => ({
 
 describe('detectRecurring', () => {
   it('detecta cobrança mensal estável', () => {
-    const [charge] = detectRecurring([netflix('2024-01-10'), netflix('2024-02-10'), netflix('2024-03-11')])
+    const [charge] = detectRecurring([netflix('2024-01-10'), netflix('2024-02-10'), netflix('2024-03-11')], '2024-03-20')
     expect(charge).toMatchObject({ descriptionNorm: 'NETFLIX', averageCents: 5590, occurrences: 3 })
     expect(charge?.nextDate).toBe('2024-04-11')
+  })
+
+  it('assinatura cancelada (sem cobrança há mais de 45 dias) não aparece', () => {
+    const charges = [netflix('2024-01-10'), netflix('2024-02-10'), netflix('2024-03-11')]
+    expect(detectRecurring(charges, '2024-04-25')).toHaveLength(1)
+    expect(detectRecurring(charges, '2024-04-26')).toEqual([])
   })
 
   it('gasto mensal que varia (ex.: mercado) não é assinatura', () => {
@@ -23,21 +29,25 @@ describe('detectRecurring', () => {
       amountCents: -cents,
       installmentTotal: null
     }))
-    expect(detectRecurring(market)).toEqual([])
+    expect(detectRecurring(market, '2024-04-20')).toEqual([])
   })
 
   it('próxima cobrança respeita o fim do mês', () => {
-    const [charge] = detectRecurring([netflix('2024-11-30'), netflix('2024-12-31'), netflix('2025-01-31')])
+    const [charge] = detectRecurring([netflix('2024-11-30'), netflix('2024-12-31'), netflix('2025-01-31')], '2025-02-01')
     expect(charge?.nextDate).toBe('2025-02-28')
   })
 
   it('ignora valores instáveis, poucas ocorrências e parcelas', () => {
-    expect(detectRecurring([netflix('2024-01-10'), netflix('2024-02-10')])).toEqual([])
+    const today = '2024-03-20'
+    expect(detectRecurring([netflix('2024-01-10'), netflix('2024-02-10')], today)).toEqual([])
     expect(
-      detectRecurring([netflix('2024-01-10'), netflix('2024-02-10', -20000), netflix('2024-03-10')])
+      detectRecurring([netflix('2024-01-10'), netflix('2024-02-10', -20000), netflix('2024-03-10')], today)
     ).toEqual([])
     expect(
-      detectRecurring(['2024-01-10', '2024-02-10', '2024-03-10'].map((d) => ({ ...netflix(d), installmentTotal: 3 })))
+      detectRecurring(
+        ['2024-01-10', '2024-02-10', '2024-03-10'].map((d) => ({ ...netflix(d), installmentTotal: 3 })),
+        today
+      )
     ).toEqual([])
   })
 })

@@ -1,11 +1,11 @@
 import { motion } from 'framer-motion'
-import { CreditCard, Landmark, LayoutDashboard, ListFilter, ListOrdered, RefreshCw, Settings } from 'lucide-react'
+import { CreditCard, Inbox, Landmark, LayoutDashboard, ListFilter, ListOrdered, RefreshCw, Settings } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import type { Account } from '@shared/types'
 import { formatDateTime } from '../lib/format'
 import { spring } from '../lib/motion'
 
-export type Screen = 'dashboard' | 'transactions' | 'rules' | 'settings'
+export type Screen = 'dashboard' | 'transactions' | 'review' | 'rules' | 'settings'
 
 export interface Selection {
   screen: Screen
@@ -16,12 +16,14 @@ function SidebarItem({
   icon: Icon,
   label,
   selected,
-  onClick
+  onClick,
+  badge
 }: {
   icon: LucideIcon
   label: string
   selected: boolean
   onClick: () => void
+  badge?: number
 }) {
   return (
     <button
@@ -34,7 +36,12 @@ function SidebarItem({
         <motion.span layoutId="sidebar-selection" transition={spring} className="absolute inset-0 rounded-control bg-fill-tertiary" />
       )}
       <Icon size={16} strokeWidth={1.5} className="relative shrink-0 text-accent" />
-      <span className="relative truncate">{label}</span>
+      <span className="relative flex-1 truncate">{label}</span>
+      {badge ? (
+        <span className="tabular relative rounded-full bg-fill-tertiary px-1.5 text-xs font-medium text-label-secondary">
+          {badge}
+        </span>
+      ) : null}
     </button>
   )
 }
@@ -50,7 +57,8 @@ export function Sidebar({
   accounts,
   lastSyncAt,
   syncing,
-  onSync
+  onSync,
+  reviewCount
 }: {
   selection: Selection
   onSelect: (selection: Selection) => void
@@ -58,6 +66,7 @@ export function Sidebar({
   lastSyncAt: string | null
   syncing: boolean
   onSync: () => void
+  reviewCount: number
 }) {
   const is = (screen: Screen, accountId?: number) =>
     selection.screen === screen && selection.accountId === accountId
@@ -84,6 +93,13 @@ export function Sidebar({
         ))}
 
         <SectionTitle>Organizar</SectionTitle>
+        <SidebarItem
+          icon={Inbox}
+          label="Revisar"
+          badge={reviewCount}
+          selected={is('review')}
+          onClick={() => onSelect({ screen: 'review' })}
+        />
         <SidebarItem icon={ListOrdered} label="Regras" selected={is('rules')} onClick={() => onSelect({ screen: 'rules' })} />
         <SidebarItem icon={Settings} label="Configurações" selected={is('settings')} onClick={() => onSelect({ screen: 'settings' })} />
       </div>

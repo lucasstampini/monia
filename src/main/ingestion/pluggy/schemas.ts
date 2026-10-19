@@ -33,6 +33,7 @@ export const transactionSchema = z.object({
   date: z.string(),
   type: z.enum(['DEBIT', 'CREDIT']),
   status: z.string().nullish(),
+  category: z.string().nullish(),
   creditCardMetadata: z
     .object({
       installmentNumber: z.number().int().nullish(),

@@ -6,6 +6,7 @@ import type {
   Category,
   DashboardData,
   MenuCommand,
+  ReviewGroup,
   Rule,
   RuleInput,
   Settings,
@@ -23,6 +24,9 @@ export interface InvokeApi {
   listMonths(): Promise<string[]>
   listTransactions(filter: TransactionFilter): Promise<Transaction[]>
   updateTransactionCategory(transactionId: number, categoryId: number | null): Promise<{ affected: number }>
+  listReviewGroups(): Promise<ReviewGroup[]>
+  /** Categoriza todas as transações sem categoria com esta descrição e cria a regra correspondente. */
+  categorizeGroup(descriptionNorm: string, categoryId: number): Promise<{ affected: number }>
   listRules(): Promise<Rule[]>
   saveRule(rule: RuleInput): Promise<Rule>
   deleteRule(id: number): Promise<void>
@@ -41,6 +45,8 @@ export const invokeChannels = [
   'listMonths',
   'listTransactions',
   'updateTransactionCategory',
+  'listReviewGroups',
+  'categorizeGroup',
   'listRules',
   'saveRule',
   'deleteRule',

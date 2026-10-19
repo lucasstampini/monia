@@ -5,6 +5,7 @@ import type {
   CategorySource,
   DashboardData,
   MonthSpending,
+  ReviewGroup,
   Rule,
   RuleInput,
   Transaction,
@@ -13,7 +14,8 @@ import type {
 import { addMonths, monthOf, today } from '../pipeline/normalize'
 import { projectMonths } from '../pipeline/projection'
 import { detectRecurring } from '../pipeline/recurring'
-import { findMatchingRule, sortRules } from '../pipeline/rules'
+import { resolveWithoutAi } from '../pipeline/categorize'
+import { sortRules } from '../pipeline/rules'
 import type { Db } from './client'
 import { accounts, aiCache, categories, rules, transactions } from './schema'
 import { NON_SPENDING_CATEGORIES } from './seed'
@@ -89,12 +91,18 @@ export function listTransactions(db: Db, filter: TransactionFilter): Transaction
  * Quem deixou de casar com regra volta para o cache da IA ou para "Sem categoria".
  */
 export function reapplyRules(db: Db): number {
-  const sorted = listRules(db)
-  const cache = new Map(db.select().from(aiCache).all().map((row) => [row.descriptionNorm, row.categoryId]))
+  const context = {
+    rules: listRules(db),
+    categories: listCategories(db),
+    aiCache: new Map(db.select().from(aiCache).all().map((row) => [row.descriptionNorm, row.categoryId]))
+  }
   const candidates = db
     .select({
       id: transactions.id,
       descriptionNorm: transactions.descriptionNorm,
+      amountCents: transactions.amountCents,
+      date: transactions.date,
+      sourceCategory: transactions.sourceCategory,
       categoryId: transactions.categoryId,
       categorySource: transactions.categorySource
     })
@@ -105,13 +113,11 @@ export function reapplyRules(db: Db): number {
   let changed = 0
   db.transaction((tx) => {
     for (const row of candidates) {
-      const rule = findMatchingRule(sorted, row.descriptionNorm)
-      const cached = cache.get(row.descriptionNorm) ?? null
-      const next: { categoryId: number | null; categorySource: CategorySource | null } = rule
-        ? { categoryId: rule.categoryId, categorySource: 'rule' }
-        : cached !== null
-          ? { categoryId: cached, categorySource: 'ai' }
-          : { categoryId: null, categorySource: null }
+      // Mesmas camadas do sync (regra -> fonte -> cache da IA), sem chamar a IA.
+      const resolved = resolveWithoutAi(row, context)
+      const next: { categoryId: number | null; categorySource: CategorySource | null } = resolved
+        ? { categoryId: resolved.categoryId, categorySource: resolved.source }
+        : { categoryId: null, categorySource: null }
       if (next.categoryId === row.categoryId && next.categorySource === row.categorySource) continue
       tx.update(transactions).set(next).where(eq(transactions.id, row.id)).run()
       changed++
@@ -154,6 +160,39 @@ export function updateTransactionCategory(db: Db, transactionId: number, categor
   })
 
   return reapplyRules(db) + 1
+}
+
+/** Sem categoria, agrupadas por descrição; as de maior valor absoluto primeiro. */
+export function listReviewGroups(db: Db): ReviewGroup[] {
+  return db
+    .select({
+      descriptionNorm: transactions.descriptionNorm,
+      sampleDescription: sql<string>`max(${transactions.descriptionRaw})`,
+      count: sql<number>`count(*)`,
+      totalCents: sql<number>`sum(${transactions.amountCents})`,
+      lastDate: sql<string>`max(${transactions.date})`,
+      accountNames: sql<string>`group_concat(distinct ${accounts.name})`
+    })
+    .from(transactions)
+    .innerJoin(accounts, eq(accounts.id, transactions.accountId))
+    .where(isNull(transactions.categoryId))
+    .groupBy(transactions.descriptionNorm)
+    .orderBy(sql`abs(sum(${transactions.amountCents})) desc`)
+    .all()
+}
+
+/**
+ * Revisão em grupo: categoriza uma transação do grupo pelo caminho normal de correção manual.
+ * Isso cria a regra exata da descrição, e a reaplicação das regras categoriza o restante do grupo.
+ */
+export function categorizeGroup(db: Db, descriptionNorm: string, categoryId: number): number {
+  const sample = db
+    .select({ id: transactions.id })
+    .from(transactions)
+    .where(and(eq(transactions.descriptionNorm, descriptionNorm), isNull(transactions.categoryId)))
+    .get()
+  if (!sample) return 0
+  return updateTransactionCategory(db, sample.id, categoryId)
 }
 
 export function saveRule(db: Db, input: RuleInput): Rule {
@@ -226,7 +265,10 @@ export function getDashboard(db: Db, monthCount: number): DashboardData {
     }
   }
 
-  const subscriptions = detectRecurring(rows.filter((row) => row.date >= `${yearAgo}-01`))
+  const subscriptions = detectRecurring(
+    rows.filter((row) => row.date >= `${yearAgo}-01`),
+    today()
+  )
   const projection = projectMonths(rows, subscriptions, currentMonth, 4)
 
   return { months, projection, subscriptions }

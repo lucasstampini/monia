@@ -50,6 +50,10 @@ export function registerIpcHandlers(db: Db, getWindow: () => BrowserWindow | nul
     updateTransactionCategory: (transactionId, categoryId) => ({
       affected: queries.updateTransactionCategory(db, id.parse(transactionId), id.nullable().parse(categoryId))
     }),
+    listReviewGroups: () => queries.listReviewGroups(db),
+    categorizeGroup: (descriptionNorm, categoryId) => ({
+      affected: queries.categorizeGroup(db, z.string().min(1).max(500).parse(descriptionNorm), id.parse(categoryId))
+    }),
     listRules: () => queries.listRules(db),
     saveRule: (rule) => queries.saveRule(db, ruleSchema.parse(rule)),
     deleteRule: (ruleId) => queries.deleteRule(db, id.parse(ruleId)),

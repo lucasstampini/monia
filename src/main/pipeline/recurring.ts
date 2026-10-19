@@ -11,6 +11,8 @@ export interface RecurringInput {
 const MIN_OCCURRENCES = 3
 const MIN_INTERVAL_DAYS = 25
 const MAX_INTERVAL_DAYS = 35
+/** Sem cobrança há mais que isso (um ciclo + folga), consideramos cancelada. */
+const INACTIVE_AFTER_DAYS = 45
 /** Assinaturas mudam pouco de valor; contas de consumo (mercado, luz) variam mais e ficam de fora. */
 const AMOUNT_TOLERANCE = 0.05
 
@@ -31,8 +33,9 @@ function median(values: number[]): number {
 /**
  * Detecta assinaturas: mesma descrição, gasto, valor estável (±5% da mediana)
  * e cobranças mensais (intervalo de 25 a 35 dias), em pelo menos 3 meses distintos.
+ * Só entram as ativas: última cobrança há no máximo 45 dias de `today`.
  */
-export function detectRecurring(transactions: RecurringInput[]): RecurringCharge[] {
+export function detectRecurring(transactions: RecurringInput[], today: string): RecurringCharge[] {
   const groups = new Map<string, RecurringInput[]>()
   for (const tx of transactions) {
     if (tx.amountCents >= 0 || tx.installmentTotal) continue
@@ -59,6 +62,8 @@ export function detectRecurring(transactions: RecurringInput[]): RecurringCharge
     if (!monthly) continue
 
     const last = series[series.length - 1]!
+    if (daysBetween(last.date, today) > INACTIVE_AFTER_DAYS) continue
+
     charges.push({
       descriptionNorm,
       averageCents: Math.round(amounts.reduce((sum, a) => sum + a, 0) / amounts.length),
