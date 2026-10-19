@@ -30,7 +30,8 @@ const categorySchema = z.object({
   id: id.optional(),
   name: z.string().trim().min(1, 'Dê um nome à categoria.').max(60),
   color: z.string().regex(/^#[0-9a-f]{6}$/i),
-  excludedFromSpending: z.boolean()
+  excludedFromSpending: z.boolean(),
+  essential: z.boolean()
 })
 const settingsSchema = z.object({
   pluggyClientId: z.string().max(200).optional(),

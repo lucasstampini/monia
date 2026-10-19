@@ -16,6 +16,7 @@ import type {
 import { addMonths, monthOf, today } from '../pipeline/normalize'
 import { projectMonths } from '../pipeline/projection'
 import { detectRecurring } from '../pipeline/recurring'
+import { suggestSavings } from '../pipeline/savings'
 import { resolveWithoutAi } from '../pipeline/categorize'
 import { sortRules } from '../pipeline/rules'
 import type { Db } from './client'
@@ -63,7 +64,12 @@ export function saveCategory(db: Db, input: CategoryInput): Category {
   const clash = db.select().from(categories).where(sql`lower(${categories.name}) = lower(${name})`).get()
   if (clash && clash.id !== input.id) throw new Error(`Já existe uma categoria chamada "${clash.name}".`)
 
-  const values = { name, color: input.color, excludedFromSpending: input.excludedFromSpending }
+  const values = {
+    name,
+    color: input.color,
+    excludedFromSpending: input.excludedFromSpending,
+    essential: input.essential
+  }
   const saved =
     input.id !== undefined
       ? db.update(categories).set(values).where(eq(categories.id, input.id)).returning().get()
@@ -329,6 +335,8 @@ export function getDashboard(db: Db, monthCount: number): DashboardData {
     today()
   )
   const projection = projectMonths(rows, subscriptions, currentMonth, 4)
+  const essentialIds = new Set(listCategories(db).filter((c) => c.essential).map((c) => c.id))
+  const suggestions = suggestSavings(rows, subscriptions, currentMonth, essentialIds)
 
-  return { months, projection, subscriptions }
+  return { months, projection, subscriptions, suggestions }
 }

@@ -1,0 +1,1 @@
+ALTER TABLE `categories` ADD `essential` integer DEFAULT false NOT NULL;

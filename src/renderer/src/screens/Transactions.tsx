@@ -28,9 +28,25 @@ type Sort = { key: SortKey; ascending: boolean }
 
 const UNCATEGORIZED = 'none'
 
-/** Mês de competência: fatura para cartão, mês da data para conta (mesma regra do Painel). */
-function competenceMonth(row: Transaction): string {
-  return row.statementMonth ?? row.date.slice(0, 7)
+type GroupBy = 'statement' | 'purchase'
+const GROUP_BY_KEY = 'transactions.groupBy'
+
+/**
+ * Mês do agrupamento:
+ * - statement: competência (fatura no cartão, data na conta), igual ao Painel;
+ * - purchase: mês da data da compra.
+ */
+function groupMonth(row: Transaction, groupBy: GroupBy): string {
+  return groupBy === 'statement' && row.statementMonth ? row.statementMonth : row.date.slice(0, 7)
+}
+
+/** Preferência de visualização local (some sem problema se o storage falhar). */
+function loadGroupBy(): GroupBy {
+  try {
+    return localStorage.getItem(GROUP_BY_KEY) === 'purchase' ? 'purchase' : 'statement'
+  } catch {
+    return 'statement'
+  }
 }
 
 function compare(a: Transaction, b: Transaction, key: SortKey, categoryName: (id: number | null) => string): number {
@@ -95,6 +111,15 @@ export function Transactions({
   const [selectedId, setSelectedId] = useState<number | null>(null)
   const [inspectorOpen, setInspectorOpen] = useState(true)
   const [notice, setNotice] = useState<string | null>(null)
+  const [groupBy, setGroupByState] = useState<GroupBy>(loadGroupBy)
+  const setGroupBy = (value: GroupBy) => {
+    setGroupByState(value)
+    try {
+      localStorage.setItem(GROUP_BY_KEY, value)
+    } catch {
+      // preferência só desta sessão
+    }
+  }
 
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedSearch(search), 150)
@@ -127,7 +152,7 @@ export function Transactions({
   const monthGroups = useMemo(() => {
     const groups = new Map<string, { month: string; rows: Transaction[]; outCents: number; inCents: number }>()
     for (const row of rows) {
-      const month = competenceMonth(row)
+      const month = groupMonth(row, groupBy)
       const group = groups.get(month) ?? { month, rows: [], outCents: 0, inCents: 0 }
       group.rows.push(row)
       if (row.amountCents < 0) group.outCents += row.amountCents
@@ -138,7 +163,7 @@ export function Transactions({
     return [...groups.values()].sort((a, b) =>
       ascending ? a.month.localeCompare(b.month) : b.month.localeCompare(a.month)
     )
-  }, [rows, sort])
+  }, [rows, sort, groupBy])
 
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set())
   const toggleMonth = (month: string) =>
@@ -256,6 +281,13 @@ export function Transactions({
           )}
         >
           <div className="grid grid-cols-[auto_1fr] items-center gap-x-3 gap-y-2">
+            <label htmlFor="group-by" className="text-label-secondary">
+              Agrupar por
+            </label>
+            <Select id="group-by" value={groupBy} onChange={(event) => setGroupBy(event.target.value as GroupBy)}>
+              <option value="statement">Mês da fatura</option>
+              <option value="purchase">Mês da compra</option>
+            </Select>
             <label htmlFor="filter-month" className="text-label-secondary">
               Competência
             </label>

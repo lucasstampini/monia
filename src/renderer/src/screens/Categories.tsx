@@ -37,7 +37,11 @@ export function Categories({
       <GroupedRow
         key={category.id}
         label={<CategoryLabel category={category} />}
-        detail={used ? `${used.transactions} transações · ${used.rules} regras` : undefined}
+        detail={
+          used
+            ? `${used.transactions} transações · ${used.rules} regras${category.essential ? ' · essencial' : ''}`
+            : undefined
+        }
       >
         <Button variant="plain" onClick={() => setEditing({ ...category })}>
           Editar
@@ -52,7 +56,7 @@ export function Categories({
   return (
     <>
       <Toolbar title="Categorias" subtitle={`${categories.length} categorias`}>
-        <Button onClick={() => setEditing({ name: '', color: SWATCHES[7]!, excludedFromSpending: false })}>
+        <Button onClick={() => setEditing({ name: '', color: SWATCHES[7]!, excludedFromSpending: false, essential: false })}>
           <Plus size={14} /> Nova categoria
         </Button>
       </Toolbar>
@@ -168,6 +172,18 @@ function CategorySheet({
             />
             <span className="text-sm text-label-secondary">
               {draft.excludedFromSpending ? 'Fica fora do Painel' : 'Aparece no Painel'}
+            </span>
+          </div>
+
+          <span className="text-right text-label-secondary">Essencial</span>
+          <div className="flex items-center gap-2">
+            <Switch
+              label="Essencial"
+              checked={draft.essential}
+              onChange={(checked) => setDraft({ ...draft, essential: checked })}
+            />
+            <span className="text-sm text-label-secondary">
+              {draft.essential ? 'Sem sugestões de corte' : 'Pode receber sugestões de economia'}
             </span>
           </div>
 

@@ -6,6 +6,7 @@ export interface RecurringInput {
   date: string
   amountCents: number
   installmentTotal: number | null
+  categoryId?: number | null
 }
 
 const MIN_OCCURRENCES = 3
@@ -13,6 +14,8 @@ const MIN_INTERVAL_DAYS = 25
 const MAX_INTERVAL_DAYS = 35
 /** Sem cobrança há mais que isso (um ciclo + folga), consideramos cancelada. */
 const INACTIVE_AFTER_DAYS = 45
+/** Assinatura cobra uma vez por mês; muitas cobranças por mês (ex.: 99, iFood) é hábito, não assinatura. */
+const MAX_CHARGES_PER_MONTH = 1.5
 /** Assinaturas mudam pouco de valor; contas de consumo (mercado, luz) variam mais e ficam de fora. */
 const AMOUNT_TOLERANCE = 0.05
 
@@ -51,6 +54,7 @@ export function detectRecurring(transactions: RecurringInput[], today: string): 
     for (const tx of [...group].sort((a, b) => a.date.localeCompare(b.date))) byMonth.set(monthOf(tx.date), tx)
     const series = [...byMonth.values()]
     if (series.length < MIN_OCCURRENCES) continue
+    if (group.length / series.length > MAX_CHARGES_PER_MONTH) continue
 
     const amounts = series.map((tx) => -tx.amountCents)
     const typical = median(amounts)
@@ -69,7 +73,8 @@ export function detectRecurring(transactions: RecurringInput[], today: string): 
       averageCents: Math.round(amounts.reduce((sum, a) => sum + a, 0) / amounts.length),
       occurrences: series.length,
       lastDate: last.date,
-      nextDate: sameDayNextMonth(last.date)
+      nextDate: sameDayNextMonth(last.date),
+      categoryId: last.categoryId ?? null
     })
   }
 

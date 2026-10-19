@@ -1,8 +1,8 @@
 import { motion } from 'framer-motion'
-import { BarChart3, Repeat } from 'lucide-react'
+import { BarChart3, CalendarClock, Repeat, Repeat2, TrendingUp, type LucideIcon } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
-import type { Category, DashboardData, MonthSpending } from '@shared/types'
+import type { Category, DashboardData, MonthSpending, SavingSuggestion } from '@shared/types'
 import { CategoryLabel } from '../components/CategoryLabel'
 import { Button } from '../components/controls'
 import { EmptyState } from '../components/EmptyState'
@@ -117,6 +117,8 @@ export function Dashboard({
               />
             </div>
 
+            {data.suggestions.length > 0 && <SavingsPanel suggestions={data.suggestions} categories={categories} />}
+
             <div className="grid gap-4 lg:grid-cols-[3fr_2fr]">
               <Panel title="Gasto por mês" subtitle="Clique num mês para ver as categorias">
                 <MonthlyChart
@@ -146,6 +148,67 @@ export function Dashboard({
         )}
       </div>
     </>
+  )
+}
+
+const SUGGESTION_ICONS: Record<SavingSuggestion['kind'], LucideIcon> = {
+  habit: Repeat2,
+  growth: TrendingUp,
+  subscriptions: CalendarClock
+}
+
+function suggestionText(s: SavingSuggestion): string {
+  switch (s.kind) {
+    case 'habit':
+      return `${formatCount(s.perMonth)}× por mês, ${formatMoney(s.monthlyCents)}/mês em média. Usando metade das vezes, sobram ${formatMoney(s.potentialCents)}/mês.`
+    case 'growth':
+      return `${formatMoney(s.lastMonthCents)} no último mês, contra média de ${formatMoney(s.baselineCents)} nos 3 meses anteriores.`
+    case 'subscriptions': {
+      const top = [...(s.items ?? [])].sort((a, b) => b.cents - a.cents).slice(0, 3)
+      return `${formatMoney(s.monthlyCents)}/mês no total. Maiores: ${top.map((i) => `${i.label} (${formatMoney(i.cents)})`).join(', ')}. Vale revisar o que você não usa.`
+    }
+  }
+}
+
+function formatCount(value: number): string {
+  return value.toLocaleString('pt-BR', { maximumFractionDigits: 1 })
+}
+
+/** Sugestões calculadas localmente a partir dos últimos 3 meses completos. */
+function SavingsPanel({ suggestions, categories }: { suggestions: SavingSuggestion[]; categories: Category[] }) {
+  const byId = new Map(categories.map((c) => [c.id, c]))
+  const total = suggestions.reduce((sum, s) => sum + s.potentialCents, 0)
+  return (
+    <Panel
+      title="Onde dá para economizar"
+      subtitle={`Seguindo as sugestões, até ${formatMoney(total)} por mês (${formatMoney(total * 12)} por ano). Base: últimos 3 meses completos.`}
+    >
+      <ul className="divide-y divide-[var(--separator)]">
+        {suggestions.map((s) => {
+          const Icon = SUGGESTION_ICONS[s.kind]
+          return (
+            <li key={`${s.kind}-${s.label}-${s.categoryId}`} className="flex items-start gap-3 py-2.5">
+              <Icon size={16} strokeWidth={1.5} className="mt-0.5 shrink-0 text-accent" />
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2">
+                  <span className="truncate font-medium">{s.label}</span>
+                  {s.categoryId !== null && (
+                    <span className="shrink-0 text-sm text-label-secondary">
+                      <CategoryLabel category={byId.get(s.categoryId)} />
+                    </span>
+                  )}
+                </div>
+                <p className="text-sm text-label-secondary">{suggestionText(s)}</p>
+              </div>
+              <div className="shrink-0 text-right">
+                <div className="tabular font-semibold">−{formatMoney(s.potentialCents)}</div>
+                <div className="text-xs text-label-secondary">por mês</div>
+              </div>
+            </li>
+          )
+        })}
+      </ul>
+    </Panel>
   )
 }
 

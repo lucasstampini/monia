@@ -20,7 +20,9 @@ export const categories = sqliteTable('categories', {
   parentId: integer('parent_id'),
   color: text('color').notNull(),
   /** Movimentações que não são consumo (fatura, investimento, entre contas): ficam fora dos gráficos. */
-  excludedFromSpending: integer('excluded_from_spending', { mode: 'boolean' }).notNull().default(false)
+  excludedFromSpending: integer('excluded_from_spending', { mode: 'boolean' }).notNull().default(false),
+  /** Gasto essencial (moradia, saúde...): não entra nas sugestões de economia. */
+  essential: integer('essential', { mode: 'boolean' }).notNull().default(false)
 })
 
 export const imports = sqliteTable('imports', {

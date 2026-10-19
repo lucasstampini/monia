@@ -4,8 +4,8 @@ import type { AnonymizedTransaction, LLMProvider } from '../ai/provider'
 import { categorize } from './categorize'
 
 const categories: Category[] = [
-  { id: 1, name: 'Alimentação', parentId: null, color: '#FF9500', excludedFromSpending: false },
-  { id: 2, name: 'Transporte', parentId: null, color: '#007AFF', excludedFromSpending: false }
+  { id: 1, name: 'Alimentação', parentId: null, color: '#FF9500', excludedFromSpending: false, essential: false },
+  { id: 2, name: 'Transporte', parentId: null, color: '#007AFF', excludedFromSpending: false, essential: false }
 ]
 const rules: Rule[] = [{ id: 1, pattern: 'UBER', matchType: 'contains', categoryId: 2, priority: 0, origin: 'manual' }]
 

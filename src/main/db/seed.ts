@@ -4,7 +4,10 @@ import type { Db } from './client'
 import { categories, rules, settings } from './schema'
 
 /** Versão atual dos dados iniciais. Incrementar ao adicionar um bloco novo em `seed`. */
-const SEED_VERSION = 3
+const SEED_VERSION = 4
+
+/** Categorias essenciais por padrão: o Painel não sugere cortes nelas. */
+const ESSENTIAL_CATEGORIES = ['Moradia', 'Saúde', 'Educação', 'Impostos e taxas', 'Mercado']
 
 /**
  * Categorias que não são consumo: ficam fora dos gráficos para não contar em dobro.
@@ -148,6 +151,9 @@ export function seed(db: Db): boolean {
         .set({ excludedFromSpending: true })
         .where(inArray(categories.name, NON_SPENDING_CATEGORIES))
         .run()
+    }
+    if (current < 4) {
+      tx.update(categories).set({ essential: true }).where(inArray(categories.name, ESSENTIAL_CATEGORIES)).run()
     }
     if (current < SEED_VERSION) {
       tx.insert(settings)

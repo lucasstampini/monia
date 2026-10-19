@@ -22,6 +22,8 @@ export interface Category {
   color: string
   /** Não entra nos gráficos de gasto/renda (ex.: pagamento de fatura, investimentos). */
   excludedFromSpending: boolean
+  /** Gasto essencial: o Painel não sugere cortes nele. */
+  essential: boolean
 }
 
 export interface CategoryInput {
@@ -29,6 +31,7 @@ export interface CategoryInput {
   name: string
   color: string
   excludedFromSpending: boolean
+  essential: boolean
 }
 
 /** Quantas transações e regras usam cada categoria (para avisar antes de excluir). */
@@ -106,12 +109,35 @@ export interface RecurringCharge {
   occurrences: number
   lastDate: string
   nextDate: string
+  categoryId: number | null
+}
+
+/**
+ * Sugestão de economia (valores positivos, em centavos por mês):
+ * - habit: compra frequente no mesmo lugar (ex.: 99, iFood);
+ * - growth: gasto do último mês bem acima da média anterior;
+ * - subscriptions: total das cobranças recorrentes ativas.
+ */
+export interface SavingSuggestion {
+  kind: 'habit' | 'growth' | 'subscriptions'
+  label: string
+  categoryId: number | null
+  /** Média mensal dos últimos 3 meses completos. */
+  monthlyCents: number
+  /** Compras por mês (média), ou quantidade de assinaturas. */
+  perMonth: number
+  /** Quanto daria para economizar por mês seguindo a sugestão. */
+  potentialCents: number
+  lastMonthCents: number
+  baselineCents: number
+  items?: { label: string; cents: number }[]
 }
 
 export interface DashboardData {
   months: MonthSpending[]
   projection: ProjectedMonth[]
   subscriptions: RecurringCharge[]
+  suggestions: SavingSuggestion[]
 }
 
 export interface Settings {

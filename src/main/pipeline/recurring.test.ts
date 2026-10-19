@@ -22,6 +22,13 @@ describe('detectRecurring', () => {
     expect(detectRecurring(charges, '2024-04-26')).toEqual([])
   })
 
+  it('cobrança várias vezes por mês (ex.: 99) é hábito, não assinatura', () => {
+    const rides = ['2024-01', '2024-02', '2024-03'].flatMap((m) =>
+      ['05', '12', '20'].map((d) => ({ descriptionNorm: '99', date: `${m}-${d}`, amountCents: -2500, installmentTotal: null }))
+    )
+    expect(detectRecurring(rides, '2024-03-25')).toEqual([])
+  })
+
   it('gasto mensal que varia (ex.: mercado) não é assinatura', () => {
     const market = [48000, 50100, 52200, 54300].map((cents, i) => ({
       descriptionNorm: 'SUPERMERCADO',
@@ -61,7 +68,7 @@ describe('projectMonths', () => {
         { accountId: 1, descriptionNorm: 'LOJA', amountCents: -1000, installmentCurrent: 1, installmentTotal: 3, month: '2024-04' },
         { accountId: 1, descriptionNorm: 'MERCADO', amountCents: -3000, installmentCurrent: null, installmentTotal: null, month: '2024-05' }
       ],
-      [{ descriptionNorm: 'NETFLIX', averageCents: 5590, occurrences: 3, lastDate: '2024-05-10', nextDate: '2024-06-10' }],
+      [{ descriptionNorm: 'NETFLIX', averageCents: 5590, occurrences: 3, lastDate: '2024-05-10', nextDate: '2024-06-10', categoryId: null }],
       '2024-05',
       3
     )
