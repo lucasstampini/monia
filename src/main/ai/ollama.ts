@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import type { Category } from '@shared/types'
+import { httpError } from './http'
 import {
   buildPrompt,
   categorizationJsonSchema,
@@ -33,10 +34,7 @@ export class OllamaProvider implements LLMProvider {
       }),
       signal: AbortSignal.timeout(120_000)
     })
-    if (!response.ok) {
-      const detail = (await response.text().catch(() => '')).replace(/\s+/g, ' ').slice(0, 200)
-      throw new Error(`HTTP ${response.status} (modelo "${this.model}"): ${detail}`)
-    }
+    if (!response.ok) throw await httpError(response, this.model)
     const body = responseSchema.parse(await response.json())
     return parseCategorization(body.message.content, new Set(categories.map((c) => c.id)))
   }

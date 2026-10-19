@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import type { Category } from '@shared/types'
+import { fetchWithRetry, httpError } from './http'
 import {
   buildPrompt,
   parseCategorization,
@@ -25,20 +26,16 @@ export class GeminiProvider implements LLMProvider {
 
   async categorize(transactions: AnonymizedTransaction[], categories: Category[]): Promise<CategorySuggestion[]> {
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(this.model)}:generateContent`
-    const response = await fetch(url, {
+    const response = await fetchWithRetry(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-goog-api-key': this.apiKey },
       body: JSON.stringify({
         contents: [{ role: 'user', parts: [{ text: buildPrompt(transactions, categories) }] }],
         generationConfig: { responseMimeType: 'application/json', temperature: 0 }
       }),
-      signal: AbortSignal.timeout(60_000)
+      timeoutMs: 60_000
     })
-    if (!response.ok) {
-      // O corpo explica o motivo (ex.: modelo inexistente). A chave vai no header, não aparece aqui.
-      const detail = (await response.text().catch(() => '')).replace(/\s+/g, ' ').slice(0, 200)
-      throw new Error(`HTTP ${response.status} (modelo "${this.model}"): ${detail}`)
-    }
+    if (!response.ok) throw await httpError(response, this.model)
     const body = responseSchema.parse(await response.json())
     const text = body.candidates[0]!.content.parts.map((p) => p.text).join('')
     return parseCategorization(text, new Set(categories.map((c) => c.id)))
