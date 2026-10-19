@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import { createLogger } from '../../logger'
-import { authResponseSchema, itemSchema, pageSchema, type PluggyItem } from './schemas'
+import { authResponseSchema, cursorPageSchema, itemSchema, pageSchema, type PluggyItem } from './schemas'
 
 const log = createLogger('pluggy')
 
@@ -50,8 +50,14 @@ export class PluggyClient {
       log.error(`GET ${path}`, { ms: Math.round(performance.now() - start), error: (error as Error).message })
       throw new Error(`Pluggy GET ${path.split('?')[0]} sem resposta: ${(error as Error).message}`)
     }
-    log.info(`GET ${path}`, { status: response.status, ms: Math.round(performance.now() - start) })
-    if (!response.ok) throw new Error(`Pluggy GET ${path.split('?')[0]} falhou (HTTP ${response.status})`)
+    const ms = Math.round(performance.now() - start)
+    if (!response.ok) {
+      // O corpo de erro da Pluggy traz código e motivo (ex.: ENDPOINT_DEPRECATED); não contém credenciais.
+      const body = (await response.text().catch(() => '')).slice(0, 300)
+      log.error(`GET ${path}`, { status: response.status, ms, body })
+      throw new Error(`Pluggy GET ${path.split('?')[0]} falhou (HTTP ${response.status})`)
+    }
+    log.info(`GET ${path}`, { status: response.status, ms })
     return response.json()
   }
 
@@ -76,6 +82,38 @@ export class PluggyClient {
     } while (page <= totalPages)
     return results
   }
+
+  /**
+   * Busca todas as páginas de uma listagem paginada por cursor (ex.: `/v2/transactions`).
+   * Para quando `next` vem vazio, quando o cursor se repete ou num teto de segurança.
+   */
+  async getAllByCursor(path: string, params: Record<string, string>): Promise<unknown[]> {
+    const results: unknown[] = []
+    const seen = new Set<string>()
+    let after: string | null = null
+    for (let page = 0; page < MAX_CURSOR_PAGES; page++) {
+      const query = new URLSearchParams({ ...params, ...(after ? { after } : {}) })
+      const body = cursorPageSchema.parse(await this.get(`${path}?${query}`))
+      results.push(...body.results)
+      after = cursorFromNext(body.next)
+      if (!after || seen.has(after)) return results
+      seen.add(after)
+    }
+    log.warn('paginação por cursor atingiu o teto', { path, pages: MAX_CURSOR_PAGES })
+    return results
+  }
+}
+
+const MAX_CURSOR_PAGES = 1000
+
+/**
+ * Extrai o cursor da próxima página. A Pluggy devolve `next` como URL com `?after=...`;
+ * aceitamos também o cursor puro, por robustez.
+ */
+export function cursorFromNext(next: string | null | undefined): string | null {
+  if (!next) return null
+  if (!/^https?:\/\//.test(next)) return next
+  return new URL(next).searchParams.get('after')
 }
 
 /** Valida uma lista item a item: itens inválidos viram erro registrado, não exceção. */

@@ -129,7 +129,19 @@ export class PluggyAdapter implements SourceAdapter {
           }
 
           onProgress(`Lendo transações de ${account.name}…`)
-          const rawTransactions = await this.client.getAll('/transactions', { accountId: account.id, from })
+          let rawTransactions: unknown[]
+          try {
+            // `/v2/transactions` (cursor): o `/transactions` paginado devolve 410 em contas novas da Pluggy.
+            rawTransactions = await this.client.getAllByCursor('/v2/transactions', {
+              accountId: account.id,
+              dateFrom: from
+            })
+          } catch (error) {
+            // Uma conta com problema não impede a leitura das outras.
+            log.error('transações da conta falharam', { account: account.name, error: errorMessage(error) })
+            batch.errors.push(`Transações de ${account.name}: ${errorMessage(error)}`)
+            continue
+          }
           const before = batch.transactions.length
           for (const tx of parseEach(transactionSchema, rawTransactions, 'Transação', batch.errors)) {
             try {

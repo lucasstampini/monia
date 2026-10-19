@@ -55,6 +55,12 @@ export const pageSchema = z.object({
   totalPages: z.number().int().optional()
 })
 
+/** Página do `GET /v2/transactions`: `next` é o link (ou cursor) da próxima página, null no fim. */
+export const cursorPageSchema = z.object({
+  results: z.array(z.unknown()),
+  next: z.string().nullish()
+})
+
 export type PluggyItem = z.infer<typeof itemSchema>
 export type PluggyAccount = z.infer<typeof accountSchema>
 export type PluggyTransaction = z.infer<typeof transactionSchema>
