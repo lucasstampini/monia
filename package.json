@@ -10,12 +10,20 @@
     "preview": "electron-vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:db": "node scripts/test-db.mjs",
     "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json",
     "db:generate": "drizzle-kit generate",
+    "dist": "electron-vite build && electron-builder",
     "postinstall": "electron-builder install-app-deps"
   },
+  "build": {
+    "appId": "dev.lucas.analise-de-gastos",
+    "productName": "Análise de Gastos",
+    "files": ["out/**", "drizzle/**"],
+    "mac": { "category": "public.app-category.finance" }
+  },
   "dependencies": {
-    "better-sqlite3": "^13.0.3",
+    "better-sqlite3": "12.11.1",
     "drizzle-orm": "^0.45.4",
     "framer-motion": "^14.4.0",
     "lucide-react": "^1.59.0",
@@ -32,7 +40,7 @@
     "@vitejs/plugin-react": "^6.1.2",
     "autoprefixer": "^10.6.1",
     "drizzle-kit": "^0.31.11",
-    "electron": "^44.9.0",
+    "electron": "42.11.15",
     "electron-builder": "^26.15.3",
     "electron-vite": "^6.0.0",
     "postcss": "^8.5.31",

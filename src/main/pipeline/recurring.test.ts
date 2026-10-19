@@ -16,6 +16,16 @@ describe('detectRecurring', () => {
     expect(charge?.nextDate).toBe('2024-04-11')
   })
 
+  it('gasto mensal que varia (ex.: mercado) não é assinatura', () => {
+    const market = [48000, 50100, 52200, 54300].map((cents, i) => ({
+      descriptionNorm: 'SUPERMERCADO',
+      date: `2024-0${i + 1}-15`,
+      amountCents: -cents,
+      installmentTotal: null
+    }))
+    expect(detectRecurring(market)).toEqual([])
+  })
+
   it('próxima cobrança respeita o fim do mês', () => {
     const [charge] = detectRecurring([netflix('2024-11-30'), netflix('2024-12-31'), netflix('2025-01-31')])
     expect(charge?.nextDate).toBe('2025-02-28')

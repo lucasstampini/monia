@@ -11,7 +11,8 @@ export interface RecurringInput {
 const MIN_OCCURRENCES = 3
 const MIN_INTERVAL_DAYS = 25
 const MAX_INTERVAL_DAYS = 35
-const AMOUNT_TOLERANCE = 0.1
+/** Assinaturas mudam pouco de valor; contas de consumo (mercado, luz) variam mais e ficam de fora. */
+const AMOUNT_TOLERANCE = 0.05
 
 /** Mesmo dia no mês seguinte; dia 31 vira o último dia do mês quando ele não existir. */
 function sameDayNextMonth(date: string): string {
@@ -28,7 +29,7 @@ function median(values: number[]): number {
 }
 
 /**
- * Detecta assinaturas: mesma descrição, gasto, valor estável (±10% da mediana)
+ * Detecta assinaturas: mesma descrição, gasto, valor estável (±5% da mediana)
  * e cobranças mensais (intervalo de 25 a 35 dias), em pelo menos 3 meses distintos.
  */
 export function detectRecurring(transactions: RecurringInput[]): RecurringCharge[] {

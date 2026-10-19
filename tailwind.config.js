@@ -11,6 +11,7 @@ module.exports = {
         separator: 'var(--separator)',
         'control-bg': 'var(--control-background)',
         'content-bg': 'var(--content-background)',
+        'grouped-bg': 'var(--grouped-background)',
         'window-bg': 'var(--window-background)',
         'fill-quaternary': 'var(--quaternary-fill)',
         'fill-tertiary': 'var(--tertiary-fill)',
