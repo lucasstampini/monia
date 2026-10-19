@@ -3,13 +3,13 @@ import type { SyncResult } from '@shared/types'
 import type { LLMProvider } from '../ai/provider'
 import type { Db } from '../db/client'
 import { listCategories, listRules } from '../db/queries'
-import { accounts, aiCache, imports, statements, transactions } from '../db/schema'
+import { accounts, aiCache, imports, investments, investmentSnapshots, statements, transactions } from '../db/schema'
 import type { SourceAdapter, SourceBatch } from '../ingestion/types'
 import { categorize } from './categorize'
 import { dedupHashes } from './dedup'
 import { resolveInstallment } from './installments'
 import { createLogger, timed } from '../logger'
-import { normalizeDescription } from './normalize'
+import { normalizeDescription, today } from './normalize'
 
 const log = createLogger('sync')
 
@@ -35,6 +35,11 @@ export async function runImport(
 
   onProgress('Salvando contas e faturas…')
   const accountIdByExternal = await timed(log, 'salvar contas e faturas', () => saveAccountsAndStatements(db, batch))
+
+  if (batch.investments.length > 0) {
+    onProgress('Salvando investimentos…')
+    await timed(log, 'salvar investimentos', () => saveInvestments(db, batch), () => ({ count: batch.investments.length }))
+  }
 
   onProgress('Salvando transações…')
   const { inserted, updated } = await timed(
@@ -107,6 +112,34 @@ function saveAccountsAndStatements(db: Db, batch: SourceBatch): Map<string, numb
     }
   })
   return accountIdByExternal
+}
+
+/**
+ * Atualiza a posição de cada investimento (sem mexer na classe que o usuário escolheu)
+ * e grava o retrato do dia. Sincronizar duas vezes no mesmo dia só atualiza o retrato.
+ */
+function saveInvestments(db: Db, batch: SourceBatch): void {
+  const seenAt = new Date().toISOString()
+  const day = today()
+  db.transaction((tx) => {
+    for (const raw of batch.investments) {
+      const values = { ...raw, lastSeenAt: seenAt }
+      const { externalId: _externalId, ...updatable } = values
+      const saved = tx
+        .insert(investments)
+        .values(values)
+        .onConflictDoUpdate({ target: investments.externalId, set: updatable })
+        .returning({ id: investments.id })
+        .get()
+      tx.insert(investmentSnapshots)
+        .values({ investmentId: saved.id, date: day, balanceCents: raw.balanceCents })
+        .onConflictDoUpdate({
+          target: [investmentSnapshots.investmentId, investmentSnapshots.date],
+          set: { balanceCents: raw.balanceCents }
+        })
+        .run()
+    }
+  })
 }
 
 function saveTransactions(

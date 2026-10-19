@@ -1,14 +1,16 @@
 import type { AccountType } from '@shared/types'
 import { createLogger } from '../../logger'
 import { addMonths, monthOf, statementMonthFor, today, toCents, toLocalDate } from '../../pipeline/normalize'
-import type { RawAccount, RawStatement, RawTransaction, SourceAdapter, SourceBatch } from '../types'
+import type { RawAccount, RawInvestment, RawStatement, RawTransaction, SourceAdapter, SourceBatch } from '../types'
 import { parseEach, PluggyClient, type PluggyCredentials } from './client'
 import {
   accountSchema,
   billSchema,
+  investmentSchema,
   transactionSchema,
   type PluggyAccount,
   type PluggyBill,
+  type PluggyInvestment,
   type PluggyTransaction
 } from './schemas'
 
@@ -82,6 +84,37 @@ export function mapTransaction(
   }
 }
 
+export function mapInvestment(investment: PluggyInvestment, institution: string, itemId: string): RawInvestment {
+  const balanceCents = toCents(investment.balance)
+  const investedCents = investment.amountOriginal != null ? toCents(investment.amountOriginal) : null
+  // Sem lucro informado, deduzimos de saldo - valor aplicado quando os dois existem.
+  const profitCents =
+    investment.amountProfit != null
+      ? toCents(investment.amountProfit)
+      : investedCents !== null
+        ? balanceCents - investedCents
+        : null
+  return {
+    externalId: investment.id,
+    sourceItemId: itemId,
+    institution,
+    name: investment.name,
+    type: investment.type,
+    subtype: investment.subtype ?? null,
+    balanceCents,
+    investedCents,
+    profitCents,
+    lastTwelveMonthsRate: investment.lastTwelveMonthsRate ?? null,
+    lastMonthRate: investment.lastMonthRate ?? null,
+    rate: investment.rate ?? null,
+    rateType: investment.rateType ?? null,
+    fixedAnnualRate: investment.fixedAnnualRate ?? null,
+    dueDate: investment.dueDate ? toLocalDate(investment.dueDate) : null,
+    status: investment.status ?? null,
+    updatedAt: investment.date ? toLocalDate(investment.date) : null
+  }
+}
+
 // ---------- Adaptador (faz as chamadas de rede) ----------
 
 export interface PluggyAdapterOptions {
@@ -100,7 +133,14 @@ export class PluggyAdapter implements SourceAdapter {
   }
 
   async fetch(onProgress: (step: string) => void = () => {}): Promise<SourceBatch> {
-    const batch: SourceBatch = { source: this.source, accounts: [], transactions: [], statements: [], errors: [] }
+    const batch: SourceBatch = {
+      source: this.source,
+      accounts: [],
+      transactions: [],
+      statements: [],
+      investments: [],
+      errors: []
+    }
     const from = this.options.from ?? `${addMonths(monthOf(today()), -12)}-01`
 
     for (const itemId of this.options.itemIds) {
@@ -159,6 +199,20 @@ export class PluggyAdapter implements SourceAdapter {
             bills: billMonthById.size,
             from
           })
+        }
+
+        // Investimentos: falha aqui não impede contas e transações.
+        onProgress(`Lendo investimentos de ${item.connector.name}…`)
+        try {
+          const raw = await this.client.getAll('/investments', { itemId })
+          const parsed = parseEach(investmentSchema, raw, 'Investimento', batch.errors)
+          // Resgatados totalmente não fazem parte da carteira atual.
+          const active = parsed.filter((i) => i.status !== 'TOTAL_WITHDRAWAL')
+          batch.investments.push(...active.map((i) => mapInvestment(i, item.connector.name, itemId)))
+          log.info('investimentos lidos', { itemId, received: raw.length, active: active.length })
+        } catch (error) {
+          log.error('investimentos falharam', { itemId, error: errorMessage(error) })
+          batch.errors.push(`Investimentos de ${item.connector.name}: ${errorMessage(error)}`)
         }
       } catch (error) {
         log.error('conexão falhou', { itemId, error: errorMessage(error) })

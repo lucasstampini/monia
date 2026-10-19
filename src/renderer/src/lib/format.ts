@@ -56,6 +56,23 @@ export function formatMonthTitle(month: string): string {
   return long.charAt(0).toUpperCase() + long.slice(1)
 }
 
+const percent = new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 2 })
+
+/** Percentual já em pontos (12.5 -> "12,5%"). */
+export function formatPercent(value: number): string {
+  return `${percent.format(value)}%`
+}
+
+/** Taxa contratada: "100% do CDI", "IPCA + 6% a.a.", "12% a.a.". */
+export function formatContractRate(rate: number | null, rateType: string | null, fixedAnnualRate: number | null): string | null {
+  if (rate !== null && rateType) {
+    return `${formatPercent(rate)} do ${rateType}${fixedAnnualRate ? ` + ${formatPercent(fixedAnnualRate)} a.a.` : ''}`
+  }
+  if (rateType && fixedAnnualRate !== null) return `${rateType} + ${formatPercent(fixedAnnualRate)} a.a.`
+  if (fixedAnnualRate !== null) return `${formatPercent(fixedAnnualRate)} a.a.`
+  return null
+}
+
 export function formatDateTime(iso: string): string {
   return new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(iso))
 }

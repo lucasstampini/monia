@@ -1,0 +1,46 @@
+import { describe, expect, it } from 'vitest'
+import { computeAllocation, suggestKrakenClass } from './investments'
+
+describe('suggestKrakenClass', () => {
+  it.each([
+    ['FIXED_INCOME', 'CDB', 'RDB Nubank', 'cash'],
+    ['EQUITY', 'REAL_ESTATE_FUND', 'HGLG11', 'reits'],
+    ['EQUITY', 'STOCK', 'ITSA4', 'br_stocks'],
+    ['EQUITY', 'BDR', 'AAPL34', 'intl'],
+    ['MUTUAL_FUND', 'OFFSHORE_FUND', 'Fundo Global', 'intl'],
+    ['MUTUAL_FUND', 'MULTIMARKET_FUND', 'Multimercado X', 'opportunities'],
+    ['ETF', 'ETF', 'HASH11', 'crypto'],
+    ['COE', 'STRUCTURED_NOTE', 'COE Bolsa', 'opportunities']
+  ])('%s/%s %s -> %s', (type, subtype, name, expected) => {
+    expect(suggestKrakenClass(type, subtype, name)).toBe(expected)
+  })
+
+  it('previdência e tipos desconhecidos ficam sem classe', () => {
+    expect(suggestKrakenClass('SECURITY', 'PGBL', 'Prev')).toBeNull()
+    expect(suggestKrakenClass('OTHER', null, 'Algo')).toBeNull()
+  })
+})
+
+describe('computeAllocation', () => {
+  it('calcula % atual e quanto falta para a meta, ignorando o sem classe', () => {
+    const { allocation, unclassifiedCents } = computeAllocation(
+      [
+        { krakenClass: 'cash', balanceCents: 60_000_00 },
+        { krakenClass: 'br_stocks', balanceCents: 40_000_00 },
+        { krakenClass: null, balanceCents: 5_000_00 }
+      ],
+      { cash: 30, br_stocks: 40, intl: 30 }
+    )
+    expect(unclassifiedCents).toBe(5_000_00)
+    const cash = allocation.find((a) => a.krakenClass === 'cash')!
+    expect(cash).toMatchObject({ currentPercent: 60, targetPercent: 30, gapCents: -30_000_00 })
+    const intl = allocation.find((a) => a.krakenClass === 'intl')!
+    expect(intl).toMatchObject({ currentPercent: 0, gapCents: 30_000_00 })
+    expect(allocation).toHaveLength(6)
+  })
+
+  it('carteira vazia não divide por zero', () => {
+    const { allocation } = computeAllocation([], { cash: 100 })
+    expect(allocation.every((a) => a.currentPercent === 0 && a.gapCents === 0)).toBe(true)
+  })
+})

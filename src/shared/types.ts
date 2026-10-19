@@ -133,6 +133,84 @@ export interface SavingSuggestion {
   items?: { label: string; cents: number }[]
 }
 
+// ---------- Investimentos ----------
+
+/**
+ * Classes da alocação KRAKEN: caixa, fundos imobiliários/REITs, ações brasileiras,
+ * cripto, exterior e oportunidades. As metas (%) são definidas pelo usuário.
+ */
+export type KrakenClass = 'cash' | 'reits' | 'br_stocks' | 'crypto' | 'intl' | 'opportunities'
+
+export const KRAKEN_CLASSES: { key: KrakenClass; label: string }[] = [
+  { key: 'cash', label: 'Caixa e renda fixa' },
+  { key: 'reits', label: 'FIIs e REITs' },
+  { key: 'br_stocks', label: 'Ações Brasil' },
+  { key: 'crypto', label: 'Cripto' },
+  { key: 'intl', label: 'Exterior' },
+  { key: 'opportunities', label: 'Oportunidades' }
+]
+
+export interface Investment {
+  id: number
+  institution: string
+  name: string
+  type: string
+  subtype: string | null
+  /** Classe efetiva: a escolhida pelo usuário ou a sugerida pelo tipo. Null = sem classe. */
+  krakenClass: KrakenClass | null
+  /** true quando o usuário escolheu a classe manualmente. */
+  krakenClassManual: boolean
+  balanceCents: number
+  investedCents: number | null
+  profitCents: number | null
+  /** Percentuais, como a fonte informa (12.5 = 12,5%). */
+  lastTwelveMonthsRate: number | null
+  lastMonthRate: number | null
+  /** Ex.: rate 100 + rateType "CDI" + fixedAnnualRate 5 = 100% do CDI + 5% a.a. */
+  rate: number | null
+  rateType: string | null
+  fixedAnnualRate: number | null
+  dueDate: string | null
+  /** Data da posição informada pela fonte (fechamento). */
+  updatedAt: string | null
+}
+
+export interface AllocationSlice {
+  krakenClass: KrakenClass
+  label: string
+  valueCents: number
+  currentPercent: number
+  targetPercent: number
+  /** Positivo: falta aportar para chegar na meta. Negativo: acima da meta. */
+  gapCents: number
+}
+
+export interface InvestmentsOverview {
+  investments: Investment[]
+  totalCents: number
+  investedCents: number
+  profitCents: number
+  allocation: AllocationSlice[]
+  /** Valor sem classe definida (não entra na alocação). */
+  unclassifiedCents: number
+  /** Patrimônio total por data de sincronização (evolução). */
+  history: { date: string; totalCents: number }[]
+  targetsDefined: boolean
+}
+
+export interface InvestmentInsight {
+  title: string
+  detail: string
+  priority: 'alta' | 'media' | 'baixa'
+}
+
+export interface InvestmentAdvice {
+  insights: InvestmentInsight[]
+  generatedAt: string
+  provider: string
+  model: string
+}
+
 export interface DashboardData {
   months: MonthSpending[]
   projection: ProjectedMonth[]

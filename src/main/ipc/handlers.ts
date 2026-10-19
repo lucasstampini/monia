@@ -1,7 +1,9 @@
 import { ipcMain, shell, type BrowserWindow } from 'electron'
 import { z } from 'zod'
 import { eventChannels, type InvokeApi } from '@shared/ipc'
-import { createProvider } from '../ai'
+import { createClient, createProvider } from '../ai'
+import { adviseInvestments } from '../ai/investmentAdvisor'
+import * as investmentQueries from '../db/investments'
 import type { Db } from '../db/client'
 import * as queries from '../db/queries'
 import { PluggyAdapter } from '../ingestion/pluggy/adapter'
@@ -32,6 +34,16 @@ const categorySchema = z.object({
   color: z.string().regex(/^#[0-9a-f]{6}$/i),
   excludedFromSpending: z.boolean(),
   essential: z.boolean()
+})
+const krakenClassSchema = z.enum(['cash', 'reits', 'br_stocks', 'crypto', 'intl', 'opportunities'])
+const percent = z.number().int().min(0).max(100)
+const targetsSchema = z.object({
+  cash: percent,
+  reits: percent,
+  br_stocks: percent,
+  crypto: percent,
+  intl: percent,
+  opportunities: percent
 })
 const settingsSchema = z.object({
   pluggyClientId: z.string().max(200).optional(),
@@ -90,6 +102,18 @@ export function registerIpcHandlers(db: Db, getWindow: () => BrowserWindow | nul
       } finally {
         syncing = false
       }
+    },
+    getInvestments: () => investmentQueries.getInvestmentsOverview(db),
+    setInvestmentClass: (investmentId, krakenClass) =>
+      investmentQueries.setInvestmentClass(db, id.parse(investmentId), krakenClassSchema.nullable().parse(krakenClass)),
+    saveAllocationTargets: (targets) => investmentQueries.saveAllocationTargets(db, targetsSchema.parse(targets)),
+    getInvestmentAdvice: () => investmentQueries.getStoredAdvice(db),
+    generateInvestmentAdvice: async () => {
+      const client = createClient(getProviderConfig(db))
+      if (!client) throw new Error('Configure um provedor de IA em Configurações para gerar sugestões.')
+      const advice = await adviseInvestments(client, investmentQueries.getInvestmentsOverview(db))
+      investmentQueries.storeAdvice(db, advice)
+      return advice
     },
     revealLogs: () => {
       const file = logFilePath()

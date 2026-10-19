@@ -4,6 +4,7 @@ import { Sidebar, type Selection } from './components/Sidebar'
 import { errorMessage, useAsync } from './lib/useAsync'
 import { Categories } from './screens/Categories'
 import { Dashboard } from './screens/Dashboard'
+import { Investments } from './screens/Investments'
 import { Review } from './screens/Review'
 import { Rules } from './screens/Rules'
 import { SettingsScreen } from './screens/Settings'
@@ -139,6 +140,7 @@ export function App() {
                 onSync={openSync}
               />
             )}
+            {selection.screen === 'investments' && <Investments dataVersion={dataVersion} onSync={openSync} />}
             {selection.screen === 'review' && (
               <Review categories={categoryList} dataVersion={dataVersion} onDataChanged={bumpData} />
             )}

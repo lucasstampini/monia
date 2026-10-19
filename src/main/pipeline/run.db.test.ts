@@ -11,7 +11,8 @@ import { categorizeGroup, deleteCategory, deleteRule, listReviewGroups, listRule
 import * as schema from '../db/schema'
 import { categories, rules, settings, transactions } from '../db/schema'
 import { seed } from '../db/seed'
-import type { RawTransaction, SourceAdapter, SourceBatch } from '../ingestion/types'
+import { getInvestmentsOverview, saveAllocationTargets, setInvestmentClass } from '../db/investments'
+import type { RawInvestment, RawTransaction, SourceAdapter, SourceBatch } from '../ingestion/types'
 import { runImport } from './run'
 
 function fakeAdapter(batch: Omit<SourceBatch, 'source' | 'errors'>): SourceAdapter {
@@ -36,6 +37,7 @@ function tx(externalId: string, description: string, amountCents: number, extra:
 const batch = {
   accounts: [{ externalId: 'card', institution: 'Banco', name: 'Cartão', type: 'credit' as const, sourceItemId: null }],
   statements: [],
+  investments: [] as RawInvestment[],
   transactions: [
     tx('t1', 'IFOOD *LANCHE', -3000),
     tx('t2', 'LOJA X PARC 02/05', -10000),
@@ -156,6 +158,53 @@ describe('excluir categoria', () => {
     expect(byExternal(database, 't1').categoryId).toBeNull()
     expect(database.select().from(rules).where(eq(rules.pattern, 'IFOOD')).get()).toBeUndefined()
     expect(listReviewGroups(database).some((g) => g.descriptionNorm === 'IFOOD LANCHE')).toBe(true)
+  })
+})
+
+describe('investimentos', () => {
+  const rdb = (balanceCents: number): RawInvestment => ({
+    externalId: 'inv1',
+    sourceItemId: 'item',
+    institution: 'Banco',
+    name: 'RDB',
+    type: 'FIXED_INCOME',
+    subtype: 'CDB',
+    balanceCents,
+    investedCents: 1_000_00,
+    profitCents: balanceCents - 1_000_00,
+    lastTwelveMonthsRate: 11,
+    lastMonthRate: 0.9,
+    rate: 100,
+    rateType: 'CDI',
+    fixedAnnualRate: null,
+    dueDate: null,
+    status: 'ACTIVE',
+    updatedAt: '2026-10-18'
+  })
+
+  it('sincroniza posição, guarda um retrato por dia e preserva a classe escolhida', async () => {
+    const database = db()
+    await runImport(database, fakeAdapter({ ...batch, investments: [rdb(1_100_00)] }), null)
+    let overview = getInvestmentsOverview(database)
+    expect(overview.investments[0]).toMatchObject({ krakenClass: 'cash', krakenClassManual: false, balanceCents: 1_100_00 })
+
+    setInvestmentClass(database, overview.investments[0]!.id, 'opportunities')
+    // Mesmo dia, saldo novo: atualiza posição e retrato, sem duplicar.
+    await runImport(database, fakeAdapter({ ...batch, investments: [rdb(1_200_00)] }), null)
+    overview = getInvestmentsOverview(database)
+    expect(overview.investments).toHaveLength(1)
+    expect(overview.investments[0]).toMatchObject({ krakenClass: 'opportunities', krakenClassManual: true, balanceCents: 1_200_00 })
+    expect(overview.history).toHaveLength(1)
+    expect(overview.history[0]!.totalCents).toBe(1_200_00)
+  })
+
+  it('metas precisam somar 100%', () => {
+    const database = db()
+    expect(() =>
+      saveAllocationTargets(database, { cash: 50, reits: 10, br_stocks: 10, crypto: 5, intl: 10, opportunities: 10 })
+    ).toThrow('somar 100%')
+    saveAllocationTargets(database, { cash: 50, reits: 10, br_stocks: 15, crypto: 5, intl: 10, opportunities: 10 })
+    expect(getInvestmentsOverview(database).targetsDefined).toBe(true)
   })
 })
 

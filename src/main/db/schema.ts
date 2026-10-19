@@ -1,5 +1,5 @@
 import { sql } from 'drizzle-orm'
-import { index, integer, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core'
+import { index, integer, real, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core'
 
 export const accounts = sqliteTable(
   'accounts',
@@ -88,6 +88,55 @@ export const statements = sqliteTable(
   },
   (t) => [uniqueIndex('statements_account_month').on(t.accountId, t.refMonth)]
 )
+
+/** Posição atual de cada investimento, como a instituição informa. */
+export const investments = sqliteTable('investments', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  externalId: text('external_id').notNull().unique(),
+  sourceItemId: text('source_item_id'),
+  institution: text('institution').notNull(),
+  name: text('name').notNull(),
+  type: text('type').notNull(),
+  subtype: text('subtype'),
+  /** Classe KRAKEN escolhida pelo usuário; null = usar a sugerida pelo tipo. */
+  krakenClassOverride: text('kraken_class_override', {
+    enum: ['cash', 'reits', 'br_stocks', 'crypto', 'intl', 'opportunities']
+  }),
+  balanceCents: integer('balance_cents').notNull(),
+  investedCents: integer('invested_cents'),
+  profitCents: integer('profit_cents'),
+  // Taxas são percentuais (não dinheiro), então real é aceitável aqui.
+  lastTwelveMonthsRate: real('last_twelve_months_rate'),
+  lastMonthRate: real('last_month_rate'),
+  rate: real('rate'),
+  rateType: text('rate_type'),
+  fixedAnnualRate: real('fixed_annual_rate'),
+  dueDate: text('due_date'),
+  status: text('status'),
+  updatedAt: text('updated_at'),
+  /** Momento do último sync que trouxe este investimento (some quando é resgatado). */
+  lastSeenAt: text('last_seen_at').notNull()
+})
+
+/** Retrato diário do saldo de cada investimento, para o gráfico de evolução. */
+export const investmentSnapshots = sqliteTable(
+  'investment_snapshots',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    investmentId: integer('investment_id')
+      .notNull()
+      .references(() => investments.id, { onDelete: 'cascade' }),
+    date: text('date').notNull(),
+    balanceCents: integer('balance_cents').notNull()
+  },
+  (t) => [uniqueIndex('investment_snapshots_day').on(t.investmentId, t.date)]
+)
+
+/** Metas da alocação KRAKEN, em % inteiro por classe. */
+export const allocationTargets = sqliteTable('allocation_targets', {
+  krakenClass: text('kraken_class').primaryKey(),
+  targetPercent: integer('target_percent').notNull()
+})
 
 /** Cache da IA: mesma descrição normalizada nunca é enviada duas vezes. */
 export const aiCache = sqliteTable('ai_cache', {

@@ -7,6 +7,9 @@ import type {
   CategoryInput,
   CategoryUsage,
   DashboardData,
+  InvestmentAdvice,
+  InvestmentsOverview,
+  KrakenClass,
   MenuCommand,
   ReviewGroup,
   Rule,
@@ -40,6 +43,13 @@ export interface InvokeApi {
   getSettings(): Promise<Settings>
   saveSettings(input: SettingsInput): Promise<Settings>
   sync(): Promise<SyncResult>
+  getInvestments(): Promise<InvestmentsOverview>
+  /** `null` volta para a classe sugerida pelo tipo do investimento. */
+  setInvestmentClass(investmentId: number, krakenClass: KrakenClass | null): Promise<void>
+  /** Metas em % inteiro por classe; precisam somar 100. */
+  saveAllocationTargets(targets: Record<KrakenClass, number>): Promise<void>
+  getInvestmentAdvice(): Promise<InvestmentAdvice | null>
+  generateInvestmentAdvice(): Promise<InvestmentAdvice>
   /** Abre a pasta de logs no gerenciador de arquivos, com o arquivo selecionado. */
   revealLogs(): Promise<void>
 }
@@ -63,6 +73,11 @@ export const invokeChannels = [
   'getSettings',
   'saveSettings',
   'sync',
+  'getInvestments',
+  'setInvestmentClass',
+  'saveAllocationTargets',
+  'getInvestmentAdvice',
+  'generateInvestmentAdvice',
   'revealLogs'
 ] as const satisfies readonly (keyof InvokeApi)[]
 

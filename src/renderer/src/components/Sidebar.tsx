@@ -1,11 +1,11 @@
 import { motion } from 'framer-motion'
-import { CreditCard, Inbox, Landmark, LayoutDashboard, ListFilter, ListOrdered, RefreshCw, Settings, Tags } from 'lucide-react'
+import { CreditCard, Inbox, Landmark, LayoutDashboard, ListFilter, ListOrdered, PiggyBank, RefreshCw, Settings, Tags } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import type { Account } from '@shared/types'
 import { formatDateTime } from '../lib/format'
 import { spring } from '../lib/motion'
 
-export type Screen = 'dashboard' | 'transactions' | 'review' | 'categories' | 'rules' | 'settings'
+export type Screen = 'dashboard' | 'transactions' | 'investments' | 'review' | 'categories' | 'rules' | 'settings'
 
 export interface Selection {
   screen: Screen
@@ -80,6 +80,7 @@ export function Sidebar({
         <SectionTitle>Visão geral</SectionTitle>
         <SidebarItem icon={LayoutDashboard} label="Painel" selected={is('dashboard')} onClick={() => onSelect({ screen: 'dashboard' })} />
         <SidebarItem icon={ListFilter} label="Transações" selected={is('transactions')} onClick={() => onSelect({ screen: 'transactions' })} />
+        <SidebarItem icon={PiggyBank} label="Investimentos" selected={is('investments')} onClick={() => onSelect({ screen: 'investments' })} />
 
         {accounts.length > 0 && <SectionTitle>Contas</SectionTitle>}
         {accounts.map((account) => (

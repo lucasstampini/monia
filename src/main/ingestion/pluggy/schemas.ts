@@ -56,6 +56,26 @@ export const pageSchema = z.object({
   totalPages: z.number().int().optional()
 })
 
+export const investmentSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  type: z.string(),
+  subtype: z.string().nullish(),
+  balance: z.number(),
+  amountOriginal: z.number().nullish(),
+  amountProfit: z.number().nullish(),
+  lastMonthRate: z.number().nullish(),
+  lastTwelveMonthsRate: z.number().nullish(),
+  rate: z.number().nullish(),
+  rateType: z.string().nullish(),
+  fixedAnnualRate: z.number().nullish(),
+  dueDate: z.string().nullish(),
+  status: z.string().nullish(),
+  date: z.string().nullish()
+})
+
+export type PluggyInvestment = z.infer<typeof investmentSchema>
+
 /** Página do `GET /v2/transactions`: `next` é o link (ou cursor) da próxima página, null no fim. */
 export const cursorPageSchema = z.object({
   results: z.array(z.unknown()),

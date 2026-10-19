@@ -37,11 +37,33 @@ export interface RawStatement {
   totalCents: number
 }
 
+export interface RawInvestment {
+  externalId: string
+  sourceItemId: string | null
+  institution: string
+  name: string
+  type: string
+  subtype: string | null
+  balanceCents: number
+  investedCents: number | null
+  profitCents: number | null
+  lastTwelveMonthsRate: number | null
+  lastMonthRate: number | null
+  rate: number | null
+  rateType: string | null
+  fixedAnnualRate: number | null
+  dueDate: string | null
+  status: string | null
+  /** Data da posição (fechamento), ISO YYYY-MM-DD. */
+  updatedAt: string | null
+}
+
 export interface SourceBatch {
   source: string
   accounts: RawAccount[]
   transactions: RawTransaction[]
   statements: RawStatement[]
+  investments: RawInvestment[]
   /** Erros não fatais (uma linha ruim não derruba o import). */
   errors: string[]
 }
