@@ -1,6 +1,7 @@
 import { asc, eq, sql } from 'drizzle-orm'
 import type { Investment, InvestmentAdvice, InvestmentsOverview, KrakenClass } from '@shared/types'
-import { computeAllocation, suggestKrakenClass } from '../pipeline/investments'
+import { computeAllocation, computeInvestmentStats, suggestKrakenClass } from '../pipeline/investments'
+import { today } from '../pipeline/normalize'
 import type { Db } from './client'
 import { allocationTargets, investments, investmentSnapshots, settings } from './schema'
 
@@ -66,7 +67,8 @@ export function getInvestmentsOverview(db: Db): InvestmentsOverview {
     allocation,
     unclassifiedCents,
     history,
-    targetsDefined: Object.values(targets).some((v) => v > 0)
+    targetsDefined: Object.values(targets).some((v) => v > 0),
+    stats: computeInvestmentStats(list, today())
   }
 }
 

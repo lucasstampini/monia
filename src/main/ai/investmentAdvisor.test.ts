@@ -37,7 +37,8 @@ const overview: InvestmentsOverview = {
   allocation: [],
   unclassifiedCents: 0,
   history: [],
-  targetsDefined: false
+  targetsDefined: false,
+  stats: { profitByClass: [], maturities: [], noMaturityCents: 0, largestName: null, largestPercent: 0, top3Percent: 0 }
 }
 
 describe('buildPortfolioSummary', () => {

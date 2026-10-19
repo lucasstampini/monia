@@ -185,6 +185,18 @@ export interface AllocationSlice {
   gapCents: number
 }
 
+export interface InvestmentStats {
+  profitByClass: { krakenClass: KrakenClass | null; label: string; profitCents: number }[]
+  /** Valor que vence em cada ano (YYYY), em ordem. */
+  maturities: { year: string; valueCents: number }[]
+  /** Sem vencimento ou já disponível (liquidez). */
+  noMaturityCents: number
+  largestName: string | null
+  /** % da carteira na maior posição e nas 3 maiores. */
+  largestPercent: number
+  top3Percent: number
+}
+
 export interface InvestmentsOverview {
   investments: Investment[]
   totalCents: number
@@ -196,6 +208,7 @@ export interface InvestmentsOverview {
   /** Patrimônio total por data de sincronização (evolução). */
   history: { date: string; totalCents: number }[]
   targetsDefined: boolean
+  stats: InvestmentStats
 }
 
 export interface InvestmentInsight {

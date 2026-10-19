@@ -1,4 +1,9 @@
-import { KRAKEN_CLASSES, type AllocationSlice, type KrakenClass } from '@shared/types'
+import {
+  KRAKEN_CLASSES,
+  type AllocationSlice,
+  type InvestmentStats,
+  type KrakenClass
+} from '@shared/types'
 
 const CRYPTO_NAME = /BITCOIN|CRIPTO|CRYPTO|ETHER|HASH11|QBTC|BITH11|QETH|BLOK/i
 
@@ -36,6 +41,59 @@ export function suggestKrakenClass(type: string, subtype: string | null, name: s
       return 'opportunities'
     default:
       return null
+  }
+}
+
+export interface StatsInput {
+  name: string
+  krakenClass: KrakenClass | null
+  balanceCents: number
+  profitCents: number | null
+  dueDate: string | null
+}
+
+/**
+ * Números do painel de investimentos:
+ * - rendimento por classe (só o que a instituição informou);
+ * - vencimentos por ano (sem vencimento = liquidez/sem prazo), a partir de `today`;
+ * - concentração: peso da maior posição e das 3 maiores.
+ */
+export function computeInvestmentStats(holdings: StatsInput[], today: string): InvestmentStats {
+  const profit = new Map<KrakenClass | null, number>()
+  for (const h of holdings) {
+    if (h.profitCents === null) continue
+    profit.set(h.krakenClass, (profit.get(h.krakenClass) ?? 0) + h.profitCents)
+  }
+  const profitByClass = [...KRAKEN_CLASSES.map((c) => c.key), null]
+    .filter((key) => profit.has(key))
+    .map((key) => ({
+      krakenClass: key,
+      label: key ? KRAKEN_CLASSES.find((c) => c.key === key)!.label : 'Sem classe',
+      profitCents: profit.get(key)!
+    }))
+
+  const byYear = new Map<string, number>()
+  let noMaturityCents = 0
+  for (const h of holdings) {
+    // Vencido ou sem data: conta como disponível, não como prazo futuro.
+    if (!h.dueDate || h.dueDate < today) noMaturityCents += h.balanceCents
+    else byYear.set(h.dueDate.slice(0, 4), (byYear.get(h.dueDate.slice(0, 4)) ?? 0) + h.balanceCents)
+  }
+  const maturities = [...byYear.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([year, valueCents]) => ({ year, valueCents }))
+
+  const total = holdings.reduce((sum, h) => sum + h.balanceCents, 0)
+  const sorted = [...holdings].sort((a, b) => b.balanceCents - a.balanceCents)
+  const share = (cents: number) => (total > 0 ? Math.round((cents / total) * 1000) / 10 : 0)
+
+  return {
+    profitByClass,
+    maturities,
+    noMaturityCents,
+    largestName: sorted[0]?.name ?? null,
+    largestPercent: share(sorted[0]?.balanceCents ?? 0),
+    top3Percent: share(sorted.slice(0, 3).reduce((sum, h) => sum + h.balanceCents, 0))
   }
 }
 

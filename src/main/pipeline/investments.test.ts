@@ -1,5 +1,35 @@
 import { describe, expect, it } from 'vitest'
-import { computeAllocation, suggestKrakenClass } from './investments'
+import { computeAllocation, computeInvestmentStats, suggestKrakenClass } from './investments'
+
+describe('computeInvestmentStats', () => {
+  const holdings = [
+    { name: 'RDB', krakenClass: 'cash' as const, balanceCents: 50_000_00, profitCents: 3_000_00, dueDate: null },
+    { name: 'IPCA 2035', krakenClass: 'cash' as const, balanceCents: 20_000_00, profitCents: 1_000_00, dueDate: '2035-05-15' },
+    { name: 'CDB vencido', krakenClass: 'cash' as const, balanceCents: 5_000_00, profitCents: null, dueDate: '2025-01-01' },
+    { name: 'LCI 2027', krakenClass: 'cash' as const, balanceCents: 10_000_00, profitCents: 500_00, dueDate: '2027-03-01' },
+    { name: 'ITSA4', krakenClass: 'br_stocks' as const, balanceCents: 15_000_00, profitCents: -2_000_00, dueDate: null }
+  ]
+  const stats = computeInvestmentStats(holdings, '2026-10-19')
+
+  it('soma rendimento por classe só com o que foi informado', () => {
+    expect(stats.profitByClass).toEqual([
+      { krakenClass: 'cash', label: 'Caixa e renda fixa', profitCents: 4_500_00 },
+      { krakenClass: 'br_stocks', label: 'Ações Brasil', profitCents: -2_000_00 }
+    ])
+  })
+
+  it('agrupa vencimentos por ano; vencido e sem data contam como liquidez', () => {
+    expect(stats.maturities).toEqual([
+      { year: '2027', valueCents: 10_000_00 },
+      { year: '2035', valueCents: 20_000_00 }
+    ])
+    expect(stats.noMaturityCents).toBe(70_000_00)
+  })
+
+  it('mede concentração', () => {
+    expect(stats).toMatchObject({ largestName: 'RDB', largestPercent: 50, top3Percent: 85 })
+  })
+})
 
 describe('suggestKrakenClass', () => {
   it.each([
