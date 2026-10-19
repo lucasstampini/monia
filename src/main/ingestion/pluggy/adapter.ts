@@ -1,4 +1,5 @@
 import type { AccountType } from '@shared/types'
+import { createLogger } from '../../logger'
 import { addMonths, monthOf, statementMonthFor, today, toCents, toLocalDate } from '../../pipeline/normalize'
 import type { RawAccount, RawStatement, RawTransaction, SourceAdapter, SourceBatch } from '../types'
 import { parseEach, PluggyClient, type PluggyCredentials } from './client'
@@ -10,6 +11,8 @@ import {
   type PluggyBill,
   type PluggyTransaction
 } from './schemas'
+
+const log = createLogger('pluggy')
 
 // ---------- Conversões puras (testadas com fixtures) ----------
 
@@ -127,6 +130,7 @@ export class PluggyAdapter implements SourceAdapter {
 
           onProgress(`Lendo transações de ${account.name}…`)
           const rawTransactions = await this.client.getAll('/transactions', { accountId: account.id, from })
+          const before = batch.transactions.length
           for (const tx of parseEach(transactionSchema, rawTransactions, 'Transação', batch.errors)) {
             try {
               batch.transactions.push(mapTransaction(tx, account, billMonthById))
@@ -134,8 +138,17 @@ export class PluggyAdapter implements SourceAdapter {
               batch.errors.push(`Transação ${tx.id}: ${errorMessage(error)}`)
             }
           }
+          log.info('conta lida', {
+            account: account.name,
+            type: account.type,
+            received: rawTransactions.length,
+            mapped: batch.transactions.length - before,
+            bills: billMonthById.size,
+            from
+          })
         }
       } catch (error) {
+        log.error('conexão falhou', { itemId, error: errorMessage(error) })
         batch.errors.push(`Conexão ${itemId}: ${errorMessage(error)}`)
       }
     }

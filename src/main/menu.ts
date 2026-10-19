@@ -1,6 +1,7 @@
-import { app, Menu, type BrowserWindow, type MenuItemConstructorOptions } from 'electron'
+import { app, Menu, shell, type BrowserWindow, type MenuItemConstructorOptions } from 'electron'
 import { eventChannels } from '@shared/ipc'
 import type { MenuCommand } from '@shared/types'
+import { logFilePath } from './logger'
 
 /** Menu de aplicativo completo, com os atalhos padrão do Mac (Cmd no macOS, Ctrl nos demais). */
 export function buildMenu(getWindow: () => BrowserWindow | null): void {
@@ -78,6 +79,18 @@ export function buildMenu(getWindow: () => BrowserWindow | null): void {
         { role: 'zoom', label: 'Zoom' },
         ...(isMac ? ([{ type: 'separator' }, { role: 'front', label: 'Trazer tudo para frente' }] satisfies MenuItemConstructorOptions[]) : []),
         { role: 'close', label: 'Fechar' }
+      ]
+    },
+    {
+      label: 'Ajuda',
+      submenu: [
+        {
+          label: 'Mostrar logs',
+          click: () => {
+            const file = logFilePath()
+            if (file) shell.showItemInFolder(file)
+          }
+        }
       ]
     }
   ]

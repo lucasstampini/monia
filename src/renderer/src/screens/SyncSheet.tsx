@@ -1,14 +1,30 @@
 import { motion } from 'framer-motion'
 import { AlertTriangle, CheckCircle2, Loader2 } from 'lucide-react'
+import { useEffect, useState } from 'react'
 import type { SyncResult } from '@shared/types'
 import { Button } from '../components/controls'
 import { Sheet } from '../components/Sheet'
 
 export type SyncState =
   | { status: 'idle' }
-  | { status: 'running'; step: string }
+  | { status: 'running'; step: string; startedAt: number }
   | { status: 'done'; result: SyncResult }
   | { status: 'failed'; message: string }
+
+/** Tempo decorrido (m:ss), para saber se o sync está andando ou parado. */
+function Elapsed({ since }: { since: number }) {
+  const [now, setNow] = useState(Date.now())
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 1000)
+    return () => clearInterval(timer)
+  }, [])
+  const seconds = Math.max(0, Math.floor((now - since) / 1000))
+  return (
+    <span className="tabular shrink-0 text-sm">
+      {Math.floor(seconds / 60)}:{String(seconds % 60).padStart(2, '0')}
+    </span>
+  )
+}
 
 function Stat({ label, value }: { label: string; value: number }) {
   return (
@@ -49,12 +65,21 @@ export function SyncSheet({
       )}
 
       {state.status === 'running' && (
-        <div className="flex items-center gap-2 py-3 text-label-secondary" role="status" aria-live="polite">
-          <Loader2 size={16} className="animate-spin" />
-          <motion.span key={state.step} initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-            {state.step}
-          </motion.span>
-        </div>
+        <>
+          <div className="flex items-center gap-2 py-3 text-label-secondary" role="status" aria-live="polite">
+            <Loader2 size={16} className="shrink-0 animate-spin" />
+            <motion.span key={state.step} initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex-1">
+              {state.step}
+            </motion.span>
+            <Elapsed since={state.startedAt} />
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button variant="plain" onClick={() => void window.api.revealLogs()}>
+              Mostrar log
+            </Button>
+            <Button onClick={onClose}>Continuar em segundo plano</Button>
+          </div>
+        </>
       )}
 
       {state.status === 'done' && (
@@ -83,7 +108,10 @@ export function SyncSheet({
               </ul>
             </details>
           )}
-          <div className="flex justify-end">
+          <div className="flex justify-end gap-2">
+            <Button variant="plain" onClick={() => void window.api.revealLogs()}>
+              Mostrar log
+            </Button>
             <Button variant="primary" onClick={onClose} autoFocus>
               OK
             </Button>
@@ -98,6 +126,9 @@ export function SyncSheet({
             <span>{state.message}</span>
           </div>
           <div className="flex justify-end gap-2">
+            <Button variant="plain" onClick={() => void window.api.revealLogs()}>
+              Mostrar log
+            </Button>
             <Button onClick={onOpenSettings}>Abrir Configurações</Button>
             <Button variant="primary" onClick={onStart}>
               Tentar de novo

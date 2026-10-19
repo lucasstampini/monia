@@ -1,12 +1,15 @@
-import { ipcMain, type BrowserWindow } from 'electron'
+import { ipcMain, shell, type BrowserWindow } from 'electron'
 import { z } from 'zod'
 import { eventChannels, type InvokeApi } from '@shared/ipc'
 import { createProvider } from '../ai'
 import type { Db } from '../db/client'
 import * as queries from '../db/queries'
 import { PluggyAdapter } from '../ingestion/pluggy/adapter'
+import { createLogger, logFilePath } from '../logger'
 import { runImport } from '../pipeline/run'
 import { getPluggyCredentials, getProviderConfig, getSettings, saveSettings, writeSetting } from '../settings'
+
+const log = createLogger('ipc')
 
 // Tudo que vem do renderer é tratado como entrada externa e validado com Zod.
 const id = z.number().int().positive()
@@ -72,10 +75,22 @@ export function registerIpcHandlers(db: Db, getWindow: () => BrowserWindow | nul
       } finally {
         syncing = false
       }
+    },
+    revealLogs: () => {
+      const file = logFilePath()
+      if (file) shell.showItemInFolder(file)
     }
   }
 
   for (const [channel, handler] of Object.entries(handlers)) {
-    ipcMain.handle(channel, (_event, ...args: unknown[]) => handler(...args))
+    ipcMain.handle(channel, async (_event, ...args: unknown[]) => {
+      try {
+        return await handler(...args)
+      } catch (error) {
+        // Argumentos não vão para o log: podem conter credenciais (saveSettings).
+        log.error(`IPC ${channel} falhou`, { error: error instanceof Error ? error.message : String(error) })
+        throw error
+      }
+    })
   }
 }

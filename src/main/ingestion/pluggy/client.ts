@@ -1,5 +1,8 @@
 import { z } from 'zod'
+import { createLogger } from '../../logger'
 import { authResponseSchema, itemSchema, pageSchema, type PluggyItem } from './schemas'
+
+const log = createLogger('pluggy')
 
 const BASE_URL = 'https://api.pluggy.ai'
 const TIMEOUT_MS = 30_000
@@ -19,12 +22,14 @@ export class PluggyClient {
   constructor(private readonly credentials: PluggyCredentials) {}
 
   private async authenticate(): Promise<string> {
+    const start = performance.now()
     const response = await fetch(`${BASE_URL}/auth`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(this.credentials),
       signal: AbortSignal.timeout(TIMEOUT_MS)
     })
+    log.info('POST /auth', { status: response.status, ms: Math.round(performance.now() - start) })
     if (!response.ok) throw new Error(`Pluggy recusou as credenciais (HTTP ${response.status})`)
     const { apiKey } = authResponseSchema.parse(await response.json())
     this.apiKey = apiKey
@@ -33,16 +38,28 @@ export class PluggyClient {
 
   private async get(path: string): Promise<unknown> {
     const apiKey = this.apiKey ?? (await this.authenticate())
-    const response = await fetch(`${BASE_URL}${path}`, {
-      headers: { 'X-API-KEY': apiKey },
-      signal: AbortSignal.timeout(TIMEOUT_MS)
-    })
+    const start = performance.now()
+    let response: Response
+    try {
+      response = await fetch(`${BASE_URL}${path}`, {
+        headers: { 'X-API-KEY': apiKey },
+        signal: AbortSignal.timeout(TIMEOUT_MS)
+      })
+    } catch (error) {
+      // Timeout e falha de rede caem aqui.
+      log.error(`GET ${path}`, { ms: Math.round(performance.now() - start), error: (error as Error).message })
+      throw new Error(`Pluggy GET ${path.split('?')[0]} sem resposta: ${(error as Error).message}`)
+    }
+    log.info(`GET ${path}`, { status: response.status, ms: Math.round(performance.now() - start) })
     if (!response.ok) throw new Error(`Pluggy GET ${path.split('?')[0]} falhou (HTTP ${response.status})`)
     return response.json()
   }
 
   async getItem(itemId: string): Promise<PluggyItem> {
-    return itemSchema.parse(await this.get(`/items/${encodeURIComponent(itemId)}`))
+    const item = itemSchema.parse(await this.get(`/items/${encodeURIComponent(itemId)}`))
+    // Item em UPDATING/LOGIN_ERROR explica dados faltando ou desatualizados.
+    log.info('item', { itemId, connector: item.connector.name, status: item.status ?? null })
+    return item
   }
 
   /** Busca todas as páginas de uma listagem. Itens ainda não validados. */

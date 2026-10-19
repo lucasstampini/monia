@@ -36,7 +36,7 @@ export function App() {
 
   const startSync = useCallback(async () => {
     setSyncOpen(true)
-    setSyncState({ status: 'running', step: 'Iniciando…' })
+    setSyncState({ status: 'running', step: 'Iniciando…', startedAt: Date.now() })
     try {
       const result = await window.api.sync()
       setSyncState({ status: 'done', result })
@@ -46,7 +46,13 @@ export function App() {
     }
   }, [bumpData])
 
-  useEffect(() => window.api.onSyncProgress(({ step }) => setSyncState({ status: 'running', step })), [])
+  useEffect(
+    () =>
+      window.api.onSyncProgress(({ step }) =>
+        setSyncState((state) => ({ status: 'running', step, startedAt: state.status === 'running' ? state.startedAt : Date.now() }))
+      ),
+    []
+  )
 
   const openSync = useCallback(() => {
     setSyncState((state) => (state.status === 'running' ? state : { status: 'idle' }))

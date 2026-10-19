@@ -8,7 +8,10 @@ import type { SourceAdapter, SourceBatch } from '../ingestion/types'
 import { categorize } from './categorize'
 import { dedupHashes } from './dedup'
 import { resolveInstallment } from './installments'
+import { createLogger, timed } from '../logger'
 import { normalizeDescription } from './normalize'
+
+const log = createLogger('sync')
 
 /**
  * Orquestra o fluxo completo:
@@ -21,18 +24,38 @@ export async function runImport(
   provider: LLMProvider | null,
   onProgress: (step: string) => void = () => {}
 ): Promise<SyncResult> {
-  const batch = await adapter.fetch(onProgress)
+  log.info('início', { source: adapter.source, ai: provider?.name ?? 'nenhuma' })
+  const batch = await timed(log, 'buscar na fonte', () => adapter.fetch(onProgress), (b) => ({
+    accounts: b.accounts.length,
+    transactions: b.transactions.length,
+    statements: b.statements.length,
+    errors: b.errors.length
+  }))
   const errors = [...batch.errors]
 
   onProgress('Salvando contas e faturas…')
-  const accountIdByExternal = saveAccountsAndStatements(db, batch)
+  const accountIdByExternal = await timed(log, 'salvar contas e faturas', () => saveAccountsAndStatements(db, batch))
 
   onProgress('Salvando transações…')
-  const { inserted, updated } = saveTransactions(db, batch, accountIdByExternal, errors)
+  const { inserted, updated } = await timed(
+    log,
+    'salvar transações',
+    () => saveTransactions(db, batch, accountIdByExternal, errors),
+    (r) => r
+  )
 
   onProgress(provider ? `Categorizando com regras e ${provider.name}…` : 'Categorizando com regras…')
-  const categorized = await categorizePending(db, provider)
+  const categorized = await timed(
+    log,
+    'categorizar',
+    () =>
+      categorizePending(db, provider, (current, total) =>
+        onProgress(`Categorizando com ${provider?.name ?? 'IA'}: lote ${current} de ${total}…`)
+      ),
+    (r) => ({ byRule: r.byRule, byAi: r.byAi, errors: r.errors.length })
+  )
   errors.push(...categorized.errors)
+  for (const error of errors) log.warn('aviso do import', { error })
 
   return {
     accounts: batch.accounts.length,
@@ -168,7 +191,8 @@ function saveTransactions(
  */
 export async function categorizePending(
   db: Db,
-  provider: LLMProvider | null
+  provider: LLMProvider | null,
+  onBatch?: (batch: number, totalBatches: number) => void
 ): Promise<{ byRule: number; byAi: number; errors: string[] }> {
   const pending = db
     .select({
@@ -182,11 +206,16 @@ export async function categorizePending(
     .all()
   if (pending.length === 0) return { byRule: 0, byAi: 0, errors: [] }
 
+  log.info('sem categoria antes', {
+    transactions: pending.length,
+    uniqueDescriptions: new Set(pending.map((p) => p.descriptionNorm)).size
+  })
   const output = await categorize(pending, {
     rules: listRules(db),
     categories: listCategories(db),
     aiCache: new Map(db.select().from(aiCache).all().map((row) => [row.descriptionNorm, row.categoryId])),
-    provider
+    provider,
+    onBatch
   })
 
   db.transaction((tx) => {

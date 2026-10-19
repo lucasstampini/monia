@@ -30,6 +30,8 @@ export interface InvokeApi {
   getSettings(): Promise<Settings>
   saveSettings(input: SettingsInput): Promise<Settings>
   sync(): Promise<SyncResult>
+  /** Abre a pasta de logs no gerenciador de arquivos, com o arquivo selecionado. */
+  revealLogs(): Promise<void>
 }
 
 export const invokeChannels = [
@@ -45,7 +47,8 @@ export const invokeChannels = [
   'getDashboard',
   'getSettings',
   'saveSettings',
-  'sync'
+  'sync',
+  'revealLogs'
 ] as const satisfies readonly (keyof InvokeApi)[]
 
 /** Eventos que o main envia para o renderer. */

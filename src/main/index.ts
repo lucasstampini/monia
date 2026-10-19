@@ -3,6 +3,7 @@ import { app, BrowserWindow, nativeTheme, shell, systemPreferences, type Browser
 import { eventChannels } from '@shared/ipc'
 import { openDatabase } from './db/client'
 import { registerIpcHandlers } from './ipc/handlers'
+import { createLogger, initLogger } from './logger'
 import { buildMenu } from './menu'
 
 let mainWindow: BrowserWindow | null = null
@@ -86,7 +87,15 @@ function broadcastAppearance(): void {
   }
 }
 
+const log = createLogger('app')
+
+process.on('uncaughtException', (error) => log.error('erro não tratado', { error: error.stack ?? error.message }))
+process.on('unhandledRejection', (reason) => log.error('promise rejeitada', { error: String(reason) }))
+
 app.whenReady().then(() => {
+  const logFile = initLogger(app.getPath('logs'))
+  log.info('app iniciado', { version: app.getVersion(), electron: process.versions.electron, platform: process.platform, logFile })
+
   const db = openDatabase(join(app.getPath('userData'), 'financas.db'), join(app.getAppPath(), 'drizzle'))
   const getWindow = () => mainWindow
 

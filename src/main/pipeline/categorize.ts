@@ -22,6 +22,8 @@ export interface CategorizeContext {
   aiCache: Map<string, number | null>
   provider: LLMProvider | null
   batchSize?: number
+  /** Chamado antes de cada lote enviado à IA (lote atual começando em 1, total de lotes). */
+  onBatch?: (batch: number, totalBatches: number) => void
 }
 
 export interface CategorizeOutput {
@@ -67,8 +69,10 @@ export async function categorize(items: CategorizeItem[], context: CategorizeCon
   const descriptions = [...pendingByDescription.keys()]
   const batchSize = context.batchSize ?? 40
 
+  const totalBatches = Math.ceil(descriptions.length / batchSize)
   for (let start = 0; start < descriptions.length; start += batchSize) {
     const batch = descriptions.slice(start, start + batchSize)
+    context.onBatch?.(start / batchSize + 1, totalBatches)
     // Uma transação representativa por descrição.
     const samples = batch.map((description) => items[pendingByDescription.get(description)![0]!]!)
     const payload = anonymize(samples)
