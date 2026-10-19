@@ -1,0 +1,75 @@
+/*
+ * Cores semânticas da Apple como tokens. Componentes usam só estes nomes, nunca hex.
+ * --accent é sobrescrito em runtime com a cor de destaque do sistema.
+ */
+:root {
+  color-scheme: light;
+  --accent: #007aff;
+  --accent-text: #ffffff;
+
+  --label: rgba(0, 0, 0, 0.85);
+  --secondary-label: rgba(0, 0, 0, 0.5);
+  --tertiary-label: rgba(0, 0, 0, 0.26);
+  --separator: rgba(0, 0, 0, 0.1);
+  --window-background: #ececec;
+  --content-background: #ffffff;
+  --control-background: #ffffff;
+  /* Fundo de telas com listas agrupadas (Ajustes, painel): seções brancas sobre cinza. */
+  --grouped-background: #f2f2f4;
+  --alternating-row: #f4f5f5;
+  --quaternary-fill: rgba(0, 0, 0, 0.05);
+  --tertiary-fill: rgba(0, 0, 0, 0.08);
+  --sidebar-background: rgba(232, 232, 232, 0.6);
+  --toolbar-background: rgba(255, 255, 255, 0.82);
+  --sheet-backdrop: rgba(0, 0, 0, 0.18);
+  --shadow-panel: 0 0 0 0.5px rgba(0, 0, 0, 0.12), 0 10px 30px rgba(0, 0, 0, 0.16);
+  --shadow-control: 0 0 0 0.5px rgba(0, 0, 0, 0.14), 0 1px 1px rgba(0, 0, 0, 0.06);
+
+  --system-red: #ff3b30;
+  --system-green: #34c759;
+
+  /* Gráficos: slots validados para daltonismo (skill dataviz). */
+  --chart-series-1: #2a78d6;
+  --chart-series-2: #eb6834;
+  --chart-series-3: #1baf7a;
+  --chart-grid: #e1e0d9;
+  --chart-axis: #898781;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --accent: #0a84ff;
+
+    --label: rgba(255, 255, 255, 0.85);
+    --secondary-label: rgba(255, 255, 255, 0.55);
+    --tertiary-label: rgba(255, 255, 255, 0.25);
+    --separator: rgba(255, 255, 255, 0.1);
+    --window-background: #323232;
+    --content-background: #1e1e1e;
+    --control-background: #2c2c2c;
+    --grouped-background: #1a1a1a;
+    --alternating-row: rgba(255, 255, 255, 0.03);
+    --quaternary-fill: rgba(255, 255, 255, 0.05);
+    --tertiary-fill: rgba(255, 255, 255, 0.1);
+    --sidebar-background: rgba(40, 40, 40, 0.55);
+    --toolbar-background: rgba(30, 30, 30, 0.82);
+    --sheet-backdrop: rgba(0, 0, 0, 0.35);
+    --shadow-panel: 0 0 0 0.5px rgba(255, 255, 255, 0.12), 0 10px 30px rgba(0, 0, 0, 0.5);
+    --shadow-control: 0 0 0 0.5px rgba(255, 255, 255, 0.1), 0 1px 1px rgba(0, 0, 0, 0.3);
+
+    --system-red: #ff453a;
+    --system-green: #30d158;
+
+    --chart-series-1: #3987e5;
+    --chart-series-2: #d95926;
+    --chart-series-3: #199e70;
+    --chart-grid: #2c2c2a;
+    --chart-axis: #898781;
+  }
+}
+
+/* Linux não tem material translúcido: fundo sólido. */
+html[data-platform='linux'] {
+  --sidebar-background: var(--window-background);
+}
