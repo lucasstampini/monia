@@ -1,8 +1,9 @@
 import type { AiProviderName } from '@shared/types'
 import { createLogger } from '../logger'
-import { GeminiProvider } from './gemini'
-import { OllamaProvider } from './ollama'
-import type { LLMProvider } from './provider'
+import type { GenerateOptions, LLMClient } from './client'
+import { GeminiClient } from './gemini'
+import { OllamaClient } from './ollama'
+import { categorizerFrom, type LLMProvider } from './provider'
 
 export const DEFAULT_MODELS: Record<Exclude<AiProviderName, 'none'>, string> = {
   ollama: 'llama3.2',
@@ -19,50 +20,46 @@ export interface ProviderConfig {
 
 const log = createLogger('ai')
 
-/** Escolhe a implementação de LLMProvider a partir das configurações. */
-export function createProvider(config: ProviderConfig): LLMProvider | null {
+/** Escolhe o cliente de IA a partir das configurações (null = IA desativada). */
+export function createClient(config: ProviderConfig): LLMClient | null {
   switch (config.provider) {
-    case 'ollama': {
-      const model = config.model || DEFAULT_MODELS.ollama
-      return withLogging(new OllamaProvider(config.ollamaUrl, model), model)
-    }
-    case 'gemini': {
+    case 'ollama':
+      return withLogging(new OllamaClient(config.ollamaUrl, config.model || DEFAULT_MODELS.ollama))
+    case 'gemini':
       if (!config.geminiApiKey) {
-        log.warn('Gemini selecionado sem chave de API; IA desativada neste sync')
+        log.warn('Gemini selecionado sem chave de API; IA desativada')
         return null
       }
-      const model = config.model || DEFAULT_MODELS.gemini
-      return withLogging(new GeminiProvider(config.geminiApiKey, model), model)
-    }
+      return withLogging(new GeminiClient(config.geminiApiKey, config.model || DEFAULT_MODELS.gemini))
     case 'none':
       return null
   }
 }
 
+/** Categorizador de transações sobre o cliente configurado. */
+export function createProvider(config: ProviderConfig): LLMProvider | null {
+  const client = createClient(config)
+  return client ? categorizerFrom(client) : null
+}
+
 /**
- * Decorator: mesmo contrato de LLMProvider, mas registra tamanho do lote,
- * duração e quantas respostas vieram. Nenhum conteúdo das transações vai para o log.
+ * Decorator: mesmo contrato de LLMClient, mas registra duração e tamanho do prompt.
+ * O conteúdo do prompt e da resposta nunca vai para o log.
  */
-function withLogging(provider: LLMProvider, model: string): LLMProvider {
+function withLogging(client: LLMClient): LLMClient {
   return {
-    name: provider.name,
-    async categorize(transactions, categories) {
+    name: client.name,
+    model: client.model,
+    async generateJson(prompt: string, options?: GenerateOptions) {
       const start = performance.now()
+      const meta = { provider: client.name, model: client.model, promptChars: prompt.length }
       try {
-        const result = await provider.categorize(transactions, categories)
-        log.info('lote categorizado', {
-          provider: provider.name,
-          model,
-          sent: transactions.length,
-          answered: result.filter((r) => r.categoryId !== null).length,
-          ms: Math.round(performance.now() - start)
-        })
+        const result = await client.generateJson(prompt, options)
+        log.info('chamada à IA ok', { ...meta, ms: Math.round(performance.now() - start) })
         return result
       } catch (error) {
-        log.error('lote falhou', {
-          provider: provider.name,
-          model,
-          sent: transactions.length,
+        log.error('chamada à IA falhou', {
+          ...meta,
           ms: Math.round(performance.now() - start),
           error: error instanceof Error ? error.message : String(error)
         })

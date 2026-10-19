@@ -1,13 +1,6 @@
 import { z } from 'zod'
-import type { Category } from '@shared/types'
+import type { GenerateOptions, LLMClient } from './client'
 import { fetchWithRetry, httpError } from './http'
-import {
-  buildPrompt,
-  parseCategorization,
-  type AnonymizedTransaction,
-  type CategorySuggestion,
-  type LLMProvider
-} from './provider'
 
 const responseSchema = z.object({
   candidates: z
@@ -15,29 +8,28 @@ const responseSchema = z.object({
     .min(1)
 })
 
-/** Gemini (Google AI Studio). Recebe só o payload anonimizado. */
-export class GeminiProvider implements LLMProvider {
+/** Gemini (Google AI Studio). Só recebe payloads já anonimizados. */
+export class GeminiClient implements LLMClient {
   readonly name = 'Gemini'
 
   constructor(
     private readonly apiKey: string,
-    private readonly model: string
+    readonly model: string
   ) {}
 
-  async categorize(transactions: AnonymizedTransaction[], categories: Category[]): Promise<CategorySuggestion[]> {
+  async generateJson(prompt: string, options: GenerateOptions = {}): Promise<string> {
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(this.model)}:generateContent`
     const response = await fetchWithRetry(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-goog-api-key': this.apiKey },
       body: JSON.stringify({
-        contents: [{ role: 'user', parts: [{ text: buildPrompt(transactions, categories) }] }],
-        generationConfig: { responseMimeType: 'application/json', temperature: 0 }
+        contents: [{ role: 'user', parts: [{ text: prompt }] }],
+        generationConfig: { responseMimeType: 'application/json', temperature: options.temperature ?? 0 }
       }),
       timeoutMs: 60_000
     })
     if (!response.ok) throw await httpError(response, this.model)
     const body = responseSchema.parse(await response.json())
-    const text = body.candidates[0]!.content.parts.map((p) => p.text).join('')
-    return parseCategorization(text, new Set(categories.map((c) => c.id)))
+    return body.candidates[0]!.content.parts.map((p) => p.text).join('')
   }
 }

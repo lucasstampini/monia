@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import type { Category } from '@shared/types'
+import type { LLMClient } from './client'
 
 /** O que pode sair do app rumo a uma IA: nada além disto. */
 export interface AnonymizedTransaction {
@@ -18,6 +19,20 @@ export interface CategorySuggestion {
 export interface LLMProvider {
   readonly name: string
   categorize(transactions: AnonymizedTransaction[], categories: Category[]): Promise<CategorySuggestion[]>
+}
+
+/** Categorizador sobre qualquer cliente de IA: monta o prompt, pede JSON e valida a resposta. */
+export function categorizerFrom(client: LLMClient): LLMProvider {
+  return {
+    name: client.name,
+    async categorize(transactions, categories) {
+      const raw = await client.generateJson(buildPrompt(transactions, categories), {
+        jsonSchema: categorizationJsonSchema,
+        temperature: 0
+      })
+      return parseCategorization(raw, new Set(categories.map((c) => c.id)))
+    }
+  }
 }
 
 /** Formato que exigimos da IA. Qualquer coisa fora disso é descartada. */
