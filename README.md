@@ -36,7 +36,7 @@ Segredos são cifrados com `safeStorage` do Electron e ficam só no processo pri
 O monia lê seus bancos pelo [Meu Pluggy](https://meu.pluggy.ai), gratuito para uso pessoal. São duas contas: o **Meu Pluggy**, onde você conecta os bancos, e o **Pluggy Dashboard**, que dá as credenciais para o app ler esses dados.
 
 1. **Conecte seus bancos no Meu Pluggy.** Crie a conta em [meu.pluggy.ai](https://meu.pluggy.ai), clique para conectar, escolha a instituição e autorize pelo Open Finance. Repita para cada banco.
-2. **Crie a conta no Pluggy Dashboard.** Em [dashboard.pluggy.ai](https://dashboard.pluggy.ai), crie a conta e um time. Isso abre um período de teste de 15 dias: faça os passos 3 e 4 dentro dele, porque depois a lista de conexões não pode mais ser editada (as já feitas continuam funcionando).
+2. **Crie a conta no Pluggy Dashboard.** Em [dashboard.pluggy.ai](https://dashboard.pluggy.ai), crie a conta e um time. O Dashboard vai mostrar um aviso de "teste de 15 dias": ele vale para a API comercial e não limita o uso pessoal pelo Meu Pluggy, que é gratuito e sem prazo.
 3. **Crie uma aplicação e copie as credenciais.** Em **Applications**, crie uma aplicação de desenvolvimento. Copie o **Client ID** e o **Client Secret**. Guarde o secret como uma senha; o botão *Refresh Secret* gera outro e invalida o antigo.
 4. **Ligue o Meu Pluggy à aplicação.** Na página da aplicação, clique em **Ir para Demo**. Escolha o conector **MeuPluggy** e autorize com a sua conta do Meu Pluggy. Faça uma autorização **por banco** conectado no passo 1.
 5. **Copie os Item IDs.** Ainda no Demo, cada autorização aparece como um item conectado. No menu de cada item, use **Copiar Item ID**. Um banco = um Item ID.
@@ -44,9 +44,10 @@ O monia lê seus bancos pelo [Meu Pluggy](https://meu.pluggy.ai), gratuito para 
 
 Bom saber:
 
+- O plano gratuito permite até 5 conexões ativas, todas do mesmo titular.
 - O Meu Pluggy atualiza os dados uma vez por dia; sincronizar várias vezes no mesmo dia não traz nada novo.
-- Se você revogar o consentimento no banco ou ele expirar, o Item ID para de funcionar: reconecte no Meu Pluggy, autorize de novo no Demo e troque o Item ID no monia.
-- Dúvidas sobre o fluxo do Pluggy: [repositório do Meu Pluggy](https://github.com/pluggyai/meu-pluggy) e [documentação](https://docs.pluggy.ai).
+- O consentimento do Open Finance vale 12 meses. Se ele expirar ou você revogar, o Item ID para de funcionar: reconecte no Meu Pluggy, autorize de novo no Demo e troque o Item ID no monia.
+- Dúvidas sobre o fluxo do Pluggy: [página do Meu Pluggy](https://www.pluggy.ai/meu-pluggy), [repositório](https://github.com/pluggyai/meu-pluggy) e [documentação](https://docs.pluggy.ai).
 
 ### Instalar como app
 
