@@ -12,11 +12,8 @@ import { errorMessage, useAsync } from '../lib/useAsync'
 
 type Direction = 'out' | 'in' | 'all'
 
-const DIRECTIONS = [
-  { value: 'out' as const, label: 'Saídas' },
-  { value: 'in' as const, label: 'Entradas' },
-  { value: 'all' as const, label: 'Todas' }
-]
+const matchesDirection = (group: ReviewGroup, direction: Direction) =>
+  direction === 'all' || (direction === 'out' ? group.totalCents < 0 : group.totalCents > 0)
 
 /**
  * Fila de revisão: o que nem regra, nem Pluggy, nem IA souberam categorizar.
@@ -32,19 +29,25 @@ export function Review({
   onDataChanged: () => void
 }) {
   const groups = useAsync(() => window.api.listReviewGroups(), [dataVersion])
-  const [direction, setDirection] = useState<Direction>('out')
+  const [chosenDirection, setDirection] = useState<Direction | null>(null)
   const [done, setDone] = useState<Set<string>>(new Set())
   const [notice, setNotice] = useState<string | null>(null)
 
-  const visible = useMemo(
-    () =>
-      (groups.data ?? []).filter(
-        (g) =>
-          !done.has(g.descriptionNorm) &&
-          (direction === 'all' || (direction === 'out' ? g.totalCents < 0 : g.totalCents > 0))
-      ),
-    [groups.data, done, direction]
+  const pending = useMemo(
+    () => (groups.data ?? []).filter((g) => !done.has(g.descriptionNorm)),
+    [groups.data, done]
   )
+  const outCount = pending.filter((g) => matchesDirection(g, 'out')).length
+  const inCount = pending.filter((g) => matchesDirection(g, 'in')).length
+  // Sem escolha do usuário, abre em Saídas; se só sobrou entrada pendente, abre em Entradas.
+  const direction = chosenDirection ?? (outCount === 0 && inCount > 0 ? 'in' : 'out')
+  const directions = [
+    { value: 'out' as const, label: `Saídas ${outCount}` },
+    { value: 'in' as const, label: `Entradas ${inCount}` },
+    { value: 'all' as const, label: 'Todas' }
+  ]
+
+  const visible = useMemo(() => pending.filter((g) => matchesDirection(g, direction)), [pending, direction])
   const pendingTotal = visible.reduce((sum, g) => sum + g.totalCents, 0)
 
   useEffect(() => {
@@ -72,7 +75,7 @@ export function Review({
         title="Revisar"
         subtitle={groups.data ? `${visible.length} descrições sem categoria · ${formatMoney(pendingTotal)}` : undefined}
       >
-        <SegmentedControl ariaLabel="Tipo" options={DIRECTIONS} value={direction} onChange={setDirection} />
+        <SegmentedControl ariaLabel="Tipo" options={directions} value={direction} onChange={setDirection} />
       </Toolbar>
 
       <div className="flex-1 overflow-y-auto bg-grouped-bg p-5">
