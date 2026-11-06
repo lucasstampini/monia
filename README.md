@@ -36,6 +36,29 @@ Na primeira execução, abra **Configurações** e informe:
 
 Segredos são cifrados com `safeStorage` do Electron e ficam só no processo principal.
 
+### Instalar como app
+
+Para usar o monia no dia a dia, sem deixar `npm run dev` aberto:
+
+```bash
+npm install
+npm run app:install
+```
+
+O comando gera o build de produção e instala o app no sistema:
+
+| Sistema | O que acontece | Onde abrir |
+| --- | --- | --- |
+| Windows | roda o instalador em modo silencioso (por usuário, sem pedir admin) | Menu Iniciar ou atalho na Área de Trabalho |
+| macOS | copia o `monia.app` para `/Applications` | Launchpad ou Spotlight |
+| Linux | copia o AppImage para `~/Applications` | executando o `monia.AppImage` |
+
+Se o app estiver aberto, ele é fechado antes de instalar. Para atualizar depois de mudar o código, rode `npm run app:install` de novo: ele instala por cima.
+
+Os dados (banco, configurações e segredos) ficam numa pasta separada do app (`%APPDATA%\analise-de-gastos` no Windows, `~/Library/Application Support/analise-de-gastos` no macOS, `~/.config/analise-de-gastos` no Linux). Por isso, reinstalar ou atualizar não apaga nada, e o modo dev usa os mesmos dados.
+
+> O build não tem assinatura de código. No macOS, na primeira vez, abra com clique direito > **Abrir**. Se você rodar o instalador do Windows manualmente, o SmartScreen pode avisar: clique em **Mais informações** > **Executar assim mesmo**.
+
 ### Comandos
 
 ```bash
@@ -45,7 +68,8 @@ npm run test         # testes Vitest (funções puras)
 npm run test:db      # testes de integração com SQLite, no Node do Electron
 npm run typecheck    # tsc nos projetos node e web
 npm run db:generate  # gera migration a partir do schema Drizzle
-npm run dist         # empacota com electron-builder
+npm run dist         # empacota com electron-builder (instalador em dist/)
+npm run app:install  # empacota e instala o app no sistema
 ```
 
 > `better-sqlite3` é compilado para o ABI do Electron, não do Node do sistema. Por isso os testes que tocam o banco ficam em `*.db.test.ts` e rodam via `npm run test:db`.

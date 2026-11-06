@@ -14,6 +14,7 @@
     "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json",
     "db:generate": "drizzle-kit generate",
     "dist": "electron-vite build && electron-builder",
+    "app:install": "node scripts/install-app.mjs",
     "postinstall": "electron-builder install-app-deps"
   },
   "build": {
