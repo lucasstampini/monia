@@ -91,7 +91,9 @@ export function App() {
 
   const categoryList = categories.data ?? []
   const accountList = accounts.data ?? []
-  const screenKey = `${selection.screen}-${selection.accountId ?? ''}`
+  // Muda quando o filtro muda, para Transações remontar com o filtro novo (ou sem nenhum).
+  const filterKey = selection.filter ? `${selection.filter.month}-${selection.filter.categoryId}` : ''
+  const screenKey = `${selection.screen}-${selection.accountId ?? ''}-${filterKey}`
 
   return (
     <div className="flex h-full">
@@ -121,6 +123,9 @@ export function App() {
                 dataVersion={dataVersion}
                 hasAccounts={accountList.length > 0}
                 onSync={openSync}
+                onOpenCategory={(month, categoryId) =>
+                  setSelection({ screen: 'transactions', filter: { month, categoryId } })
+                }
               />
             )}
             {selection.screen === 'transactions' && (
@@ -128,6 +133,7 @@ export function App() {
                 accounts={accountList}
                 categories={categoryList}
                 accountId={selection.accountId}
+                initialFilter={selection.filter}
                 dataVersion={dataVersion}
                 onDataChanged={bumpData}
                 searchRef={searchRef}

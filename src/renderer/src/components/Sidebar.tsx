@@ -8,9 +8,17 @@ import { spring } from '../lib/motion'
 
 export type Screen = 'dashboard' | 'transactions' | 'investments' | 'review' | 'categories' | 'rules' | 'settings'
 
+/** Filtro aplicado ao abrir Transações a partir de outra tela (ex: categoria no Painel). */
+export interface TransactionsFilter {
+  month: string
+  /** `null` é "Sem categoria". */
+  categoryId: number | null
+}
+
 export interface Selection {
   screen: Screen
   accountId?: number
+  filter?: TransactionsFilter
 }
 
 function SidebarItem({

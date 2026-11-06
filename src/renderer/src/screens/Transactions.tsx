@@ -19,6 +19,7 @@ import { Button, IconButton, Select, TextField } from '../components/controls'
 import { EmptyState } from '../components/EmptyState'
 import { Popover } from '../components/Popover'
 import { Toolbar } from '../components/Toolbar'
+import type { TransactionsFilter } from '../components/Sidebar'
 import { formatDate, formatMoney, formatMonthLong, formatMonthTitle } from '../lib/format'
 import { softSpring, spring } from '../lib/motion'
 import { errorMessage, useAsync } from '../lib/useAsync'
@@ -90,6 +91,7 @@ export function Transactions({
   accounts,
   categories,
   accountId,
+  initialFilter,
   dataVersion,
   onDataChanged,
   searchRef,
@@ -98,6 +100,7 @@ export function Transactions({
   accounts: Account[]
   categories: Category[]
   accountId?: number
+  initialFilter?: TransactionsFilter
   dataVersion: number
   onDataChanged: () => void
   searchRef: RefObject<HTMLInputElement | null>
@@ -105,8 +108,11 @@ export function Transactions({
 }) {
   const [search, setSearch] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
-  const [month, setMonth] = useState('')
-  const [categoryFilter, setCategoryFilter] = useState('')
+  const [month, setMonth] = useState(initialFilter?.month ?? '')
+  const [categoryFilter, setCategoryFilter] = useState(() => {
+    if (!initialFilter) return ''
+    return initialFilter.categoryId === null ? UNCATEGORIZED : String(initialFilter.categoryId)
+  })
   const [sort, setSort] = useState<Sort>({ key: 'date', ascending: false })
   const [selectedId, setSelectedId] = useState<number | null>(null)
   const [inspectorOpen, setInspectorOpen] = useState(true)

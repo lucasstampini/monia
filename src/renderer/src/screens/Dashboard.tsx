@@ -44,12 +44,14 @@ export function Dashboard({
   categories,
   dataVersion,
   hasAccounts,
-  onSync
+  onSync,
+  onOpenCategory
 }: {
   categories: Category[]
   dataVersion: number
   hasAccounts: boolean
   onSync: () => void
+  onOpenCategory: (month: string, categoryId: number | null) => void
 }) {
   const [period, setPeriod] = useState(6)
   const dashboard = useAsync(() => window.api.getDashboard(period), [period, dataVersion])
@@ -138,7 +140,7 @@ export function Dashboard({
                 title="Por categoria"
                 subtitle={activeMonth ? `${formatMonthLong(activeMonth.month)} · ${formatMoney(activeMonth.expenseCents)}` : undefined}
               >
-                {activeMonth && <CategoryBreakdown month={activeMonth} categories={categories} />}
+                {activeMonth && <CategoryBreakdown month={activeMonth} categories={categories} onOpen={onOpenCategory} />}
               </Panel>
             </div>
 
@@ -268,7 +270,15 @@ function MonthlyChart({
 }
 
 /** Barras horizontais rotuladas: o nome identifica a categoria, não a cor. */
-function CategoryBreakdown({ month, categories }: { month: MonthSpending; categories: Category[] }) {
+function CategoryBreakdown({
+  month,
+  categories,
+  onOpen
+}: {
+  month: MonthSpending
+  categories: Category[]
+  onOpen: (month: string, categoryId: number | null) => void
+}) {
   const byId = useMemo(() => new Map(categories.map((c) => [String(c.id), c])), [categories])
   const entries = Object.entries(month.byCategory)
     .map(([id, cents]) => ({ id, cents, category: byId.get(id) }))
@@ -278,26 +288,34 @@ function CategoryBreakdown({ month, categories }: { month: MonthSpending; catego
   if (entries.length === 0) return <p className="text-label-secondary">Sem gastos neste mês.</p>
 
   return (
-    <ul className="space-y-2.5">
+    <ul className="-mx-2 space-y-0.5">
       {entries.map((entry) => (
         <li key={entry.id}>
-          <div className="mb-1 flex items-baseline justify-between gap-3">
-            <CategoryLabel category={entry.category} />
-            <span className="tabular shrink-0">
-              {formatMoney(entry.cents)}
-              <span className="ml-1.5 text-xs text-label-secondary">
-                {Math.round((entry.cents / month.expenseCents) * 100)}%
+          {/* A chave "none" agrupa os gastos sem categoria. */}
+          <button
+            type="button"
+            onClick={() => onOpen(month.month, entry.id === 'none' ? null : Number(entry.id))}
+            aria-label={`Ver gastos de ${entry.category?.name ?? 'Sem categoria'} em ${formatMonthLong(month.month)}`}
+            className="block w-full rounded-control px-2 py-1 text-left hover:bg-fill-quaternary"
+          >
+            <div className="mb-1 flex items-baseline justify-between gap-3">
+              <CategoryLabel category={entry.category} />
+              <span className="tabular shrink-0">
+                {formatMoney(entry.cents)}
+                <span className="ml-1.5 text-xs text-label-secondary">
+                  {Math.round((entry.cents / month.expenseCents) * 100)}%
+                </span>
               </span>
-            </span>
-          </div>
-          <div className="h-1.5 overflow-hidden rounded-full bg-fill-quaternary">
-            <motion.div
-              className="h-full rounded-full bg-[var(--chart-primary)]"
-              initial={{ width: 0 }}
-              animate={{ width: `${(entry.cents / max) * 100}%` }}
-              transition={softSpring}
-            />
-          </div>
+            </div>
+            <div className="h-1.5 overflow-hidden rounded-full bg-fill-quaternary">
+              <motion.div
+                className="h-full rounded-full bg-[var(--chart-primary)]"
+                initial={{ width: 0 }}
+                animate={{ width: `${(entry.cents / max) * 100}%` }}
+                transition={softSpring}
+              />
+            </div>
+          </button>
         </li>
       ))}
     </ul>
