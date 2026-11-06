@@ -95,6 +95,15 @@ function saveAccountsAndStatements(db: Db, batch: SourceBatch): Map<string, numb
       accountIdByExternal.set(account.externalId, saved.id)
     }
 
+    // A fonte manda a lista completa de faturas: substitui a anterior, para não sobrar
+    // fatura com mês antigo quando a regra do mês da fatura muda.
+    const accountsWithStatements = new Set(
+      batch.statements.flatMap((s) => accountIdByExternal.get(s.accountExternalId) ?? [])
+    )
+    if (accountsWithStatements.size > 0) {
+      tx.delete(statements).where(inArray(statements.accountId, [...accountsWithStatements])).run()
+    }
+
     for (const statement of batch.statements) {
       const accountId = accountIdByExternal.get(statement.accountExternalId)
       if (accountId === undefined) continue

@@ -98,7 +98,7 @@ export function Dashboard({
 
   return (
     <>
-      <Toolbar title="Painel" subtitle="Gastos por competência (mês da fatura no cartão)">
+      <Toolbar title="Painel" subtitle="Gastos por competência (no cartão, o mês em que a fatura fecha)">
         <SegmentedControl ariaLabel="Período" options={PERIODS} value={period} onChange={setPeriod} />
       </Toolbar>
 

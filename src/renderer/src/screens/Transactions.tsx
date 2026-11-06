@@ -559,7 +559,7 @@ function Inspector({
     [
       'Competência',
       transaction.statementMonth
-        ? `Fatura de ${formatMonthLong(transaction.statementMonth)}`
+        ? `Fatura que fecha em ${formatMonthLong(transaction.statementMonth)}`
         : formatMonthLong(transaction.date.slice(0, 7))
     ],
     ['Conta', transaction.accountName]

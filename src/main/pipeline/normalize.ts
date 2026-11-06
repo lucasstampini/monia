@@ -80,12 +80,47 @@ export function normalizeDescription(raw: string): string {
 }
 
 /**
- * Mês da fatura de uma compra no cartão.
+ * Mês da fatura de uma compra no cartão, contado pelo **fechamento** (não pelo vencimento).
  * Compras a partir do dia de fechamento caem na fatura seguinte.
- * Se o vencimento é antes (ou no) dia do fechamento, a fatura vence no mês seguinte ao fechamento.
+ * Ex.: fecha dia 24 -> compras de 24/09 a 23/10 são a fatura de outubro.
  */
-export function statementMonthFor(purchaseDate: string, closeDay: number, dueDay: number): string {
+export function statementMonthFor(purchaseDate: string, closeDay: number): string {
   const purchaseDay = Number(purchaseDate.slice(8, 10))
-  const closingMonth = purchaseDay >= closeDay ? addMonths(monthOf(purchaseDate), 1) : monthOf(purchaseDate)
-  return dueDay > closeDay ? closingMonth : addMonths(closingMonth, 1)
+  return purchaseDay >= closeDay ? addMonths(monthOf(purchaseDate), 1) : monthOf(purchaseDate)
+}
+
+/**
+ * Mês em que uma fatura fechou, a partir do vencimento: o último fechamento antes dele.
+ * Ex.: fecha dia 24 -> vencimento 30/09 é a fatura de setembro; vencimento 02/11 é a de outubro.
+ * O vencimento oscila (fim de semana, feriado); o fechamento não pula de mês.
+ */
+export function billMonthFor(dueDate: string, closeDay: number): string {
+  const dueDay = Number(dueDate.slice(8, 10))
+  return dueDay > closeDay ? monthOf(dueDate) : addMonths(monthOf(dueDate), -1)
+}
+
+/**
+ * Dia de fechamento do cartão deduzido das faturas já fechadas:
+ * cada fatura começa no dia do fechamento anterior, então o dia da compra mais antiga
+ * de cada fatura é o fechamento. Usa o dia mais frequente, para tolerar exceções.
+ */
+export function inferCloseDay(purchases: { date: string; billId: string | null }[]): number | null {
+  const firstDateByBill = new Map<string, string>()
+  for (const { date, billId } of purchases) {
+    if (!billId) continue
+    const first = firstDateByBill.get(billId)
+    if (!first || date < first) firstDateByBill.set(billId, date)
+  }
+
+  const countByDay = new Map<number, number>()
+  for (const date of firstDateByBill.values()) {
+    const day = Number(date.slice(8, 10))
+    countByDay.set(day, (countByDay.get(day) ?? 0) + 1)
+  }
+
+  let closeDay: number | null = null
+  for (const [day, count] of countByDay) {
+    if (closeDay === null || count > countByDay.get(closeDay)!) closeDay = day
+  }
+  return closeDay
 }

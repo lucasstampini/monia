@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest'
-import { addMonths, normalizeDescription, statementMonthFor, toCents, toLocalDate } from './normalize'
+import {
+  addMonths,
+  billMonthFor,
+  inferCloseDay,
+  normalizeDescription,
+  statementMonthFor,
+  toCents,
+  toLocalDate
+} from './normalize'
 
 describe('toCents', () => {
   it('converte sem erro de ponto flutuante', () => {
@@ -43,17 +51,38 @@ describe('normalizeDescription', () => {
 
 describe('statementMonthFor', () => {
   it('compra antes do fechamento cai na fatura do mês', () => {
-    // fecha dia 3, vence dia 10
-    expect(statementMonthFor('2024-05-02', 3, 10)).toBe('2024-05')
+    expect(statementMonthFor('2026-10-23', 24)).toBe('2026-10')
   })
 
   it('compra no dia do fechamento ou depois vai para a próxima', () => {
-    expect(statementMonthFor('2024-05-03', 3, 10)).toBe('2024-06')
+    expect(statementMonthFor('2026-09-24', 24)).toBe('2026-10')
+    expect(statementMonthFor('2026-12-30', 24)).toBe('2027-01')
+  })
+})
+
+describe('billMonthFor', () => {
+  it('conta a fatura pelo fechamento, mesmo com o vencimento oscilando entre dia 30 e dia 2', () => {
+    // fecha dia 24
+    expect(billMonthFor('2026-09-30', 24)).toBe('2026-09')
+    expect(billMonthFor('2026-11-02', 24)).toBe('2026-10')
+    expect(billMonthFor('2026-08-02', 24)).toBe('2026-07')
+  })
+})
+
+describe('inferCloseDay', () => {
+  it('usa o dia da compra mais antiga de cada fatura, o mais frequente', () => {
+    const purchases = [
+      { date: '2026-09-24', billId: 'out' },
+      { date: '2026-10-20', billId: 'out' },
+      { date: '2026-08-24', billId: 'set' },
+      { date: '2026-09-10', billId: 'set' },
+      { date: '2026-06-23', billId: 'jul' },
+      { date: '2026-11-03', billId: null }
+    ]
+    expect(inferCloseDay(purchases)).toBe(24)
   })
 
-  it('vencimento antes do fechamento empurra um mês', () => {
-    // fecha dia 28, vence dia 5 do mês seguinte
-    expect(statementMonthFor('2024-05-10', 28, 5)).toBe('2024-06')
-    expect(statementMonthFor('2024-05-29', 28, 5)).toBe('2024-07')
+  it('sem fatura fechada, não sabe', () => {
+    expect(inferCloseDay([{ date: '2026-11-03', billId: null }])).toBeNull()
   })
 })
