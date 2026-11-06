@@ -2,19 +2,17 @@
 
 > money + IA, no seu computador.
 
-App desktop pessoal para análise de fatura e gastos. Seus dados ficam **100% locais**: um banco SQLite na sua máquina, sem servidor, sem conta, sem nuvem.
-
-O projeto é feito em público (build in public), então o código busca ser legível e didático: clareza vence esperteza.
+App desktop para analisar fatura e gastos. Os dados ficam num banco SQLite local.
 
 ## O que faz
 
-- **Sincroniza** contas e cartões via Open Finance ([Pluggy](https://pluggy.ai), pelo Meu Pluggy, gratuito para uso pessoal)
-- **Normaliza** descrições, converte valores para centavos e remove duplicatas
-- **Detecta parcelas** ("3/10", "PARC 03/10") e projeta as próximas faturas
-- **Categoriza** por regras e, no que sobrar, por IA (Ollama local ou Gemini), com anonimização antes de enviar
-- **Aprende com você**: corrigir a categoria de uma transação cria uma regra nova
-- **Painel** com gasto por categoria e mês, projeção da fatura, assinaturas recorrentes e sugestões de economia
-- **Investimentos**: alocação, rentabilidade e vencimentos
+- Sincroniza contas e cartões via Open Finance ([Pluggy](https://pluggy.ai), pelo Meu Pluggy, gratuito para uso pessoal)
+- Normaliza descrições, converte valores para centavos e remove duplicatas
+- Detecta parcelas ("3/10", "PARC 03/10") e projeta as próximas faturas
+- Categoriza por regras e, no que sobrar, por IA (Ollama local ou Gemini), com anonimização antes de enviar
+- Corrigir a categoria de uma transação cria uma regra nova
+- Painel com gasto por categoria e mês, projeção da fatura, assinaturas recorrentes e sugestões de economia
+- Investimentos: alocação, rentabilidade e vencimentos
 
 ## Stack
 
@@ -38,7 +36,7 @@ Segredos são cifrados com `safeStorage` do Electron e ficam só no processo pri
 
 ### Instalar como app
 
-Para usar o monia no dia a dia, sem deixar `npm run dev` aberto:
+Para usar sem `npm run dev`:
 
 ```bash
 npm install
@@ -53,11 +51,9 @@ O comando gera o build de produção e instala o app no sistema:
 | macOS | copia o `monia.app` para `/Applications` | Launchpad ou Spotlight |
 | Linux | copia o AppImage para `~/Applications` | executando o `monia.AppImage` |
 
-Se o app estiver aberto, ele é fechado antes de instalar. Para atualizar depois de mudar o código, rode `npm run app:install` de novo: ele instala por cima.
+Para atualizar, rode o comando de novo. Os dados ficam fora da pasta do app (`%APPDATA%\analise-de-gastos` no Windows, `~/Library/Application Support/analise-de-gastos` no macOS, `~/.config/analise-de-gastos` no Linux), então reinstalar não apaga nada.
 
-Os dados (banco, configurações e segredos) ficam numa pasta separada do app (`%APPDATA%\analise-de-gastos` no Windows, `~/Library/Application Support/analise-de-gastos` no macOS, `~/.config/analise-de-gastos` no Linux). Por isso, reinstalar ou atualizar não apaga nada, e o modo dev usa os mesmos dados.
-
-> O build não tem assinatura de código. No macOS, na primeira vez, abra com clique direito > **Abrir**. Se você rodar o instalador do Windows manualmente, o SmartScreen pode avisar: clique em **Mais informações** > **Executar assim mesmo**.
+> Sem assinatura de código: no macOS, abra a primeira vez com clique direito > **Abrir**.
 
 ### Comandos
 
@@ -105,11 +101,11 @@ Todo adaptador implementa a mesma interface; o pipeline não sabe de onde a tran
 
 ## Princípios
 
-- **Dinheiro é inteiro em centavos.** Nunca `float`. Gasto é negativo, crédito é positivo.
-- **Datas em ISO** (`YYYY-MM-DD`, fuso `America/Sao_Paulo`). Data da compra e mês da fatura são campos diferentes.
-- **Electron seguro**: `contextIsolation`, `sandbox`, sem `nodeIntegration`.
-- **IA com cuidado**: só descrição normalizada, valor e data saem da máquina. Resposta validada com Zod; se falhar, a transação fica "Sem categoria".
-- **Sincronizar de novo não duplica nada.**
+- Dinheiro é inteiro em centavos, nunca `float`. Gasto é negativo, crédito é positivo.
+- Datas em ISO (`YYYY-MM-DD`, fuso `America/Sao_Paulo`). Data da compra e mês da fatura são campos diferentes.
+- Electron com `contextIsolation`, `sandbox`, sem `nodeIntegration`.
+- Para a IA, só descrição normalizada, valor e data saem da máquina. Resposta validada com Zod; se falhar, a transação fica "Sem categoria".
+- Sincronizar de novo não duplica nada.
 
 ## Roadmap
 
