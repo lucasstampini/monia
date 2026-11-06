@@ -4,10 +4,24 @@ import { parseCategorization } from './provider'
 
 describe('scrubDescription', () => {
   it('remove CPF, CNPJ, e-mail e números longos', () => {
-    expect(scrubDescription('PIX JOAO 123.456.789-00')).toBe('PIX JOAO [doc]')
     expect(scrubDescription('BOLETO 12.345.678/0001-90')).toBe('BOLETO [doc]')
-    expect(scrubDescription('TED fulano@mail.com')).toBe('TED [email]')
+    expect(scrubDescription('COMPRA fulano@mail.com')).toBe('COMPRA [email]')
     expect(scrubDescription('CARTAO 4111 AG 98765')).toBe('CARTAO 4111 AG [num]')
+  })
+
+  it('tira o nome de quem está do outro lado de uma transferência', () => {
+    expect(scrubDescription('TRANSFERENCIA ENVIADA PELO PIX MARIA DA SILVA')).toBe(
+      'TRANSFERENCIA ENVIADA PELO PIX [destinatario]'
+    )
+    expect(scrubDescription('TRANSFERENCIA RECEBIDA JOAO 123.456.789-00')).toBe('TRANSFERENCIA RECEBIDA [destinatario]')
+    expect(scrubDescription('REEMBOLSO RECEBIDO PELO PIX ANA LIMA')).toBe('REEMBOLSO RECEBIDO PELO PIX [destinatario]')
+    expect(scrubDescription('TED PARA JOSE SOUZA')).toBe('TED PARA [destinatario]')
+  })
+
+  it('mantém transferências sem nome e lojas com PIX no meio da palavra', () => {
+    expect(scrubDescription('PAGAMENTO DE PIX')).toBe('PAGAMENTO DE PIX')
+    expect(scrubDescription('INTERNALTRANSFER')).toBe('INTERNALTRANSFER')
+    expect(scrubDescription('PIXBET APOSTAS')).toBe('PIXBET APOSTAS')
   })
 })
 
