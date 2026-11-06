@@ -4,10 +4,12 @@ import type { ReactNode } from 'react'
  * Toolbar unificada: é a área de arrasto da janela.
  * Controles dentro dela usam `no-drag` (já embutido nos componentes de controle).
  * No Windows, reserva espaço à direita para os botões nativos da janela.
+ * O `z-20` mantém popovers da toolbar acima dos cabeçalhos sticky do conteúdo:
+ * o `backdrop-blur` cria um stacking context, e sem z-index ele fica por baixo deles.
  */
 export function Toolbar({ title, subtitle, children }: { title: string; subtitle?: string; children?: ReactNode }) {
   return (
-    <header className="drag flex h-[52px] shrink-0 items-center gap-3 border-b border-[var(--separator)] bg-[var(--toolbar-background)] pl-5 pr-3 backdrop-blur-xl [html[data-platform=win32]_&]:pr-[150px]">
+    <header className="drag relative z-20 flex h-[52px] shrink-0 items-center gap-3 border-b border-[var(--separator)] bg-[var(--toolbar-background)] pl-5 pr-3 backdrop-blur-xl [html[data-platform=win32]_&]:pr-[150px]">
       <div className="min-w-0 flex-1">
         <h1 className="truncate text-[16px] font-semibold leading-5 tracking-[-0.02em]">{title}</h1>
         {subtitle && <p className="truncate text-xs text-label-secondary">{subtitle}</p>}
